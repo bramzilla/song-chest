@@ -293,6 +293,16 @@ There are no mock-based unit tests; all tests exercise the real HTTP API.
 - `data.json` is committed (sample/initial data)
 - The `audio/` and `lyrics/` directories are tracked via `.gitkeep`; actual media files are not committed
 
+### Pull Requests
+
+After every `git push`, always open a pull request. Use `gh pr create` if the GitHub CLI is available. If `gh` is not installed, immediately provide the user with the direct URL to open the PR:
+
+```
+https://github.com/bramzilla/song-chest/pull/new/<branch-name>
+```
+
+Do not wait for the user to ask — create (or surface) the PR as part of every push.
+
 ---
 
 ## What NOT to Do
