@@ -151,6 +151,14 @@ header{display:flex;align-items:center;justify-content:space-between;padding:13p
 .proj-sel{display:flex;gap:5px;flex-wrap:wrap}
 .popt{padding:4px 10px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--text-dim);font-family:'DM Mono',monospace;font-size:11px;cursor:pointer;transition:all .15s}
 .popt.sel{border-color:var(--gold);color:var(--gold);background:var(--gold-pale)}
+.folder-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;max-height:260px;overflow-y:auto}
+.folder-card{padding:10px 12px;border-radius:8px;border:2px solid var(--border);background:var(--bg3);cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:8px;font-family:'DM Mono',monospace;font-size:12px;color:var(--text-dim);word-break:break-word}
+.folder-card:hover{border-color:var(--text-dim);color:var(--text-main)}
+.folder-card.sel{border-color:currentColor}
+.folder-card .fc-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;border:1px solid rgba(255,255,255,.15)}
+.folder-card.fc-new{border-style:dashed;justify-content:center;color:var(--text-faint)}
+.folder-card.fc-new:hover{border-color:var(--gold);color:var(--gold)}
+.move-new-inline{margin-top:10px;display:flex;gap:8px;align-items:center}
 .tag-input-area{display:flex;gap:4px;flex-wrap:wrap;background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:5px 9px;min-height:33px;cursor:text}
 .tag-input-area:focus-within{border-color:var(--gold)}
 .tag-chip{display:flex;align-items:center;gap:3px;padding:2px 6px;border-radius:20px;font-size:10px}
@@ -298,7 +306,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:13p
     </div>
     <div class="mfooter">
       <button class="btn sm danger" onclick="deleteIdea()">Delete</button>
-      <button class="btn sm teal" id="vm-move-btn" onclick="openMoveModal()" style="display:none">Move to Project</button>
+      <button class="btn sm teal" id="vm-move-btn" onclick="openMoveModal()">Assign to Project</button>
       <button class="btn sm" onclick="openEditFromView()">Edit</button>
       <button class="btn sm primary" onclick="saveNotes();closeModal('view-modal')">Done</button>
     </div>
@@ -341,12 +349,19 @@ header{display:flex;align-items:center;justify-content:space-between;padding:13p
 <!-- MOVE MODAL -->
 <div class="modal-overlay" id="move-modal">
   <div class="modal wide">
-    <div class="mhdr"><div style="flex:1"><div class="mtitle">Move files to project</div></div><button class="close-btn" onclick="closeModal('move-modal')">✕</button></div>
+    <div class="mhdr"><div style="flex:1"><div class="mtitle">Assign to Project</div></div><button class="close-btn" onclick="closeModal('move-modal')">✕</button></div>
     <div class="mbody">
-      <div class="fg"><label class="flabel">Move to project</label><div class="proj-sel" id="move-proj-sel"></div></div>
-      <div id="move-preview-area" style="margin-top:10px"></div>
+      <div class="fg">
+        <label class="flabel">Choose a folder</label>
+        <div class="folder-grid" id="move-folder-grid"></div>
+      </div>
+      <div class="move-new-inline" id="move-new-proj-row" style="display:none">
+        <input id="move-new-proj-name" class="txt" placeholder="New project name…" style="flex:1" onkeydown="if(event.key==='Enter')createAndSelectProject()">
+        <button class="btn sm primary" onclick="createAndSelectProject()">Create</button>
+        <button class="btn sm" onclick="hideMoveNewProj()">Cancel</button>
+      </div>
     </div>
-    <div class="mfooter"><button class="btn sm" onclick="closeModal('move-modal')">Cancel</button><button class="btn sm primary" id="move-confirm-btn" onclick="executeMove()" disabled>Confirm Move</button></div>
+    <div class="mfooter"><button class="btn sm" onclick="closeModal('move-modal')">Cancel</button><button class="btn sm primary" id="move-confirm-btn" onclick="executeMove()" disabled>Assign</button></div>
   </div>
 </div>
 
@@ -426,7 +441,7 @@ let files={audio:[],lyrics:[]};
 let ui={view:'grid',pf:'all',tf:'all',tag:null,search:'',sort:'newest',
         viewingId:null,editingId:null,eType:'lyric',eTags:[],eLinks:[],eSelAudio:'',eSelLyric:'',
         pType:'EP',pColor:COLORS[0],audioEl:null,playingId:null,
-        moveIdeaId:null,movePreviews:[],moveTargetPid:null,
+        moveIdeaId:null,moveTargetPid:undefined,
         pendingPaths:{audio:'',lyrics:''},
         bulkMode:false,selected:new Set()};
 
@@ -605,8 +620,7 @@ function viewIdea(id){
   else ls.style.display='none';
   document.getElementById('vm-tags').innerHTML=(idea.tags||[]).map(t=>`<span class="tag" style="background:${tCol(t,.15)};color:${tCol(t,1)};padding:3px 9px;border-radius:20px">${esc(t)}</span>`).join('')||'<span style="color:var(--text-faint);font-size:11px">No tags</span>';
   document.getElementById('vm-notes').value=idea.notes||'';
-  const hasMF=(idea.type==='audio'&&idea.audiofile)||(idea.type==='lyric'&&idea.lyricfile);
-  document.getElementById('vm-move-btn').style.display=hasMF?'':'none';
+  document.getElementById('vm-move-btn').style.display='';
   document.getElementById('view-modal').classList.add('open');
   // Sync modal play button state if this idea is already playing
   if(ui.playingId===id){
@@ -620,35 +634,101 @@ async function deleteIdea(){if(!ui.viewingId||!confirm('Delete this idea?'))retu
 
 // ── move modal ────────────────────────────────────────────────
 function openMoveModal(){
-  ui.moveIdeaId=ui.viewingId;ui.movePreviews=[];ui.moveTargetPid=null;
-  const sel=document.getElementById('move-proj-sel');sel.innerHTML='';
-  const none=document.createElement('button');none.className='popt';none.textContent='None (root)';none.dataset.pid='';none.onclick=()=>selectMoveTarget('');sel.appendChild(none);
-  db.projects.forEach(p=>{const btn=document.createElement('button');btn.className='popt';btn.textContent=p.name+' (📁 '+p.folder+')';btn.dataset.pid=p.id;btn.onclick=()=>selectMoveTarget(p.id);sel.appendChild(btn);});
-  document.getElementById('move-preview-area').innerHTML='<div style="color:var(--text-faint);font-size:11px">← Select a project to preview what will move.</div>';
+  ui.moveIdeaId=ui.viewingId;
+  ui.moveTargetPid=undefined; // undefined = nothing selected yet
+  document.getElementById('move-new-proj-row').style.display='none';
   document.getElementById('move-confirm-btn').disabled=true;
+  renderMoveFolderGrid();
   document.getElementById('move-modal').classList.add('open');
 }
 
-async function selectMoveTarget(pid){
+function renderMoveFolderGrid(){
+  const idea=db.ideas.find(i=>i.id===ui.moveIdeaId);
+  const currentPid=idea?.project||null;
+  const grid=document.getElementById('move-folder-grid');
+  grid.innerHTML='';
+
+  // Unassigned card
+  const noneCard=document.createElement('div');
+  noneCard.className='folder-card'+(currentPid===null&&ui.moveTargetPid===null?' sel':'');
+  noneCard.dataset.pid='';
+  noneCard.innerHTML='<span class="fc-dot" style="background:var(--border)"></span>Unassigned';
+  noneCard.onclick=()=>selectMoveTarget('');
+  grid.appendChild(noneCard);
+
+  // Existing project cards
+  db.projects.forEach(p=>{
+    const card=document.createElement('div');
+    const isSel=ui.moveTargetPid===p.id||(ui.moveTargetPid===undefined&&currentPid===p.id);
+    card.className='folder-card'+(isSel?' sel':'');
+    if(isSel){card.style.borderColor=p.color;card.style.color=p.color;}
+    card.dataset.pid=p.id;
+    card.innerHTML=`<span class="fc-dot" style="background:${p.color}"></span>${esc(p.name)}`;
+    card.onclick=()=>selectMoveTarget(p.id);
+    grid.appendChild(card);
+  });
+
+  // New project card
+  const newCard=document.createElement('div');
+  newCard.className='folder-card fc-new';
+  newCard.textContent='+ New Project';
+  newCard.onclick=showMoveNewProj;
+  grid.appendChild(newCard);
+}
+
+function selectMoveTarget(pid){
   ui.moveTargetPid=pid;
-  document.querySelectorAll('#move-proj-sel .popt').forEach(b=>{const on=b.dataset.pid===pid;b.className='popt'+(on?' sel':'');const p=db.projects.find(x=>x.id===b.dataset.pid);if(on&&p){b.style.borderColor=p.color;b.style.color=p.color;b.style.background=p.color+'22';}else{b.style.borderColor='';b.style.color='';b.style.background='';}});
-  const area=document.getElementById('move-preview-area');area.innerHTML='<div style="color:var(--text-faint);font-size:11px">Checking…</div>';
+  const idea=db.ideas.find(i=>i.id===ui.moveIdeaId);
+  const currentPid=idea?.project||null;
+  document.querySelectorAll('#move-folder-grid .folder-card:not(.fc-new)').forEach(card=>{
+    const p=db.projects.find(x=>x.id===card.dataset.pid);
+    const on=card.dataset.pid===pid;
+    card.className='folder-card'+(on?' sel':'');
+    card.style.borderColor=on&&p?p.color:'';
+    card.style.color=on&&p?p.color:'';
+  });
+  // Enable only if selection differs from current
+  document.getElementById('move-confirm-btn').disabled=((pid||null)===currentPid);
+}
+
+function showMoveNewProj(){
+  const row=document.getElementById('move-new-proj-row');
+  row.style.display='flex';
+  document.getElementById('move-new-proj-name').value='';
+  document.getElementById('move-new-proj-name').focus();
+}
+
+function hideMoveNewProj(){
+  document.getElementById('move-new-proj-row').style.display='none';
+}
+
+async function createAndSelectProject(){
+  const name=document.getElementById('move-new-proj-name').value.trim();
+  if(!name){toast('Enter a project name.');return;}
   try{
-    const res=await api('/api/move/preview','POST',{idea_id:ui.moveIdeaId,target_project_id:pid||null});
-    ui.movePreviews=res.moves;
-    if(!res.moves.length){area.innerHTML='<div style="color:var(--text-faint);font-size:11px">No files to move — already in the right folder or no file linked.</div>';document.getElementById('move-confirm-btn').disabled=true;return;}
-    const hasCollision=res.moves.some(m=>m.collision);
-    area.innerHTML=`<table class="move-tbl"><thead><tr><th>File</th><th>From</th><th></th><th>To</th></tr></thead><tbody>${res.moves.map(m=>`<tr><td class="fname">${esc(m.file)}</td><td class="path">${esc(m.from)}</td><td class="marrow">→</td><td class="path">${esc(m.to)}${m.collision?' <span style="color:var(--crimson)" title="A file with this name already exists at the destination">⚠ exists</span>':''}</td></tr>`).join('')}</tbody></table><div style="font-size:11px;color:var(--text-faint)">Files will be physically moved on disk. Undo is available in History.</div>${hasCollision?'<div style="font-size:11px;color:var(--crimson);margin-top:6px">⚠ One or more destination files already exist and will be overwritten.</div>':''}`;
-    document.getElementById('move-confirm-btn').disabled=false;
-  }catch(e){area.innerHTML=`<div style="color:var(--crimson);font-size:11px">${esc(e.message)}</div>`;}
+    const p=await api('/api/projects','POST',{name,type:'EP',color:COLORS[0]});
+    db.projects.push(p);
+    hideMoveNewProj();
+    ui.moveTargetPid=p.id;
+    renderMoveFolderGrid();
+    render();
+    toast(`"${name}" created.`);
+  }catch(e){toast('Error: '+e.message);}
 }
 
 async function executeMove(){
-  if(!ui.movePreviews.length)return;
   const idea=db.ideas.find(i=>i.id===ui.moveIdeaId);
+  if(!idea||ui.moveTargetPid===undefined)return;
   document.getElementById('move-confirm-btn').disabled=true;
-  try{await api('/api/move/execute','POST',{idea_id:ui.moveIdeaId,from_project_id:idea?.project||null,target_project_id:ui.moveTargetPid||null,moves:ui.movePreviews});await loadAll();closeModal('move-modal');closeModal('view-modal');toast('Files moved. Use History to undo.');}
-  catch(e){toast('Error: '+e.message);document.getElementById('move-confirm-btn').disabled=false;}
+  try{
+    const projId=ui.moveTargetPid||null;
+    await api(`/api/ideas/${ui.moveIdeaId}`,'PUT',{...idea,project:projId});
+    await loadAll();
+    const projName=db.projects.find(p=>p.id===projId)?.name;
+    closeModal('move-modal');
+    closeModal('view-modal');
+    toast(projName?`Assigned to "${projName}".`:'Removed from project.');
+  }catch(e){toast('Error: '+e.message);document.getElementById('move-confirm-btn').disabled=false;}
 }
 
 // ── edit modal ────────────────────────────────────────────────
