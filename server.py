@@ -341,10 +341,16 @@ def execute_move():
         save_data(data)
         return jsonify({"ok":True,"history_id":entry["id"],"idea":idea})
     except Exception as e:
+        rollback_warnings = []
         for m in reversed(executed):
-            try: shutil.move(m["to_abs"],m["from_abs"])
-            except: pass
-        return jsonify({"error":str(e)}), 500
+            try:
+                shutil.move(m["to_abs"], m["from_abs"])
+            except Exception as rb_err:
+                rollback_warnings.append(f"Rollback failed for {m['file']}: {rb_err}")
+        payload = {"error": str(e)}
+        if rollback_warnings:
+            payload["rollback_warnings"] = rollback_warnings
+        return jsonify(payload), 500
 
 # ── move: undo ────────────────────────────────────────────────
 
@@ -421,7 +427,12 @@ def serve_transcoded(full_path):
             '-movflags', 'faststart',
             str(tmp)
         ]
-        result = subprocess.run(cmd, capture_output=True)
+        try:
+            result = subprocess.run(cmd, capture_output=True, timeout=120)
+        except subprocess.TimeoutExpired:
+            print(f"  ffmpeg timeout: {full_path.name}")
+            tmp.unlink(missing_ok=True)
+            return send_from_directory(str(audio_dir()), str(full_path.relative_to(audio_dir())))
         if result.returncode != 0:
             print(f"  ffmpeg error: {result.stderr.decode(errors='replace')[:300]}")
             # Fall back to direct serve if transcoding fails
