@@ -6,7 +6,7 @@ Open: http://localhost:5000
 
 import json, os, shutil, uuid, time, re
 from pathlib import Path
-from flask import Flask, jsonify, request, send_from_directory, abort
+from flask import Flask, jsonify, request, send_from_directory, send_file, abort
 
 app = Flask(__name__, static_folder=".")
 
@@ -385,6 +385,31 @@ def undo_move(hid):
     entry["undone"] = True
     save_data(data)
     return jsonify({"ok":True,"warnings":warnings,"idea":idea})
+
+@app.route("/api/export")
+def export_data():
+    import io, zipfile as zf_mod
+    include_audio  = request.args.get('audio')  == '1'
+    include_lyrics = request.args.get('lyrics') == '1'
+    buf = io.BytesIO()
+    with zf_mod.ZipFile(buf, 'w', zf_mod.ZIP_DEFLATED) as zf:
+        if DATA_FILE.exists():
+            zf.write(str(DATA_FILE), 'data.json')
+        if include_audio:
+            adir = audio_dir()
+            if adir.exists():
+                for p in sorted(adir.rglob('*')):
+                    if p.is_file() and not p.name.endswith('.transcoded.m4a'):
+                        zf.write(str(p), 'audio/' + str(p.relative_to(adir)))
+        if include_lyrics:
+            ldir = lyrics_dir()
+            if ldir.exists():
+                for p in sorted(ldir.rglob('*')):
+                    if p.is_file():
+                        zf.write(str(p), 'lyrics/' + str(p.relative_to(ldir)))
+    buf.seek(0)
+    return send_file(buf, mimetype='application/zip', as_attachment=True,
+                     download_name='song-chest-backup.zip')
 
 @app.route("/api/move/history")
 def move_history():
