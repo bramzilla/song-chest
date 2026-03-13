@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Song Chest</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;1,9..144,400&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{--gold:#DAA520;--gold-dim:#b8891a;--gold-pale:rgba(218,165,32,0.12);--crimson:#C9281D;--crimson-pale:rgba(201,40,29,0.12);--teal:#63B6CF;--teal-pale:rgba(99,182,207,0.12);--bg:#1e1c19;--bg2:#262420;--bg3:#2e2b27;--bg4:#363330;--text:#e8e0d0;--text-dim:#a09888;--text-faint:#5a5450;--border:rgba(218,165,32,0.15);--border-strong:rgba(218,165,32,0.3);--green:#6db86d}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'DM Mono',monospace;font-size:13px;min-height:100vh;overflow-x:hidden}
+header{display:flex;align-items:center;justify-content:space-between;padding:13px 20px;border-bottom:1px solid var(--border);background:var(--bg2);position:sticky;top:0;z-index:100;gap:10px;flex-wrap:wrap}
+.logo{font-family:'Fraunces',serif;font-size:20px;font-weight:700;color:var(--gold);white-space:nowrap}
+.logo span{color:var(--text-faint);font-weight:300;font-size:12px;margin-left:7px}
+.header-actions{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.status-pill{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-faint);padding:3px 8px;border:1px solid var(--border);border-radius:20px}
+.sdot{width:6px;height:6px;border-radius:50%;background:var(--green)}
+.btn{padding:6px 12px;border-radius:4px;border:1px solid var(--border-strong);background:transparent;color:var(--text-dim);font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;transition:all .15s;white-space:nowrap}
+.btn:hover{background:var(--gold-pale);color:var(--gold);border-color:var(--gold)}
+.btn.primary{background:var(--gold);color:var(--bg);border-color:var(--gold);font-weight:500}
+.btn.primary:hover{background:var(--gold-dim)}
+.btn.danger{border-color:var(--crimson);color:var(--crimson)}
+.btn.danger:hover{background:var(--crimson-pale)}
+.btn.teal{border-color:var(--teal);color:var(--teal)}
+.btn.teal:hover{background:var(--teal-pale)}
+.btn:disabled{opacity:.4;cursor:default}
+.btn.sm{padding:4px 9px;font-size:11px}
+.app-body{display:grid;grid-template-columns:210px 1fr;height:calc(100vh - 51px)}
+.sidebar{background:var(--bg2);border-right:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column}
+.sidebar-section{padding:12px;border-bottom:1px solid var(--border)}
+.slabel{font-size:10px;letter-spacing:2px;color:var(--text-faint);text-transform:uppercase;margin-bottom:7px}
+.nav-item{padding:6px 8px;border-radius:4px;cursor:pointer;display:flex;align-items:center;gap:7px;transition:all .15s;margin-bottom:2px}
+.nav-item:hover{background:var(--gold-pale)}
+.nav-item.active{background:var(--gold-pale);color:var(--gold)}
+.nav-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.nav-name{font-family:'Fraunces',serif;font-size:13px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nav-count{font-size:10px;color:var(--text-faint)}
+.tag-cloud{display:flex;flex-wrap:wrap;gap:4px}
+.tag{padding:2px 7px;border-radius:20px;font-size:10px;cursor:pointer;border:1px solid transparent;transition:all .15s}
+.tag:hover{opacity:.8}
+.tag.active-tag{border-color:var(--gold)!important}
+.main-area{display:flex;flex-direction:column;overflow:hidden}
+.toolbar{display:flex;align-items:center;gap:8px;padding:9px 16px;border-bottom:1px solid var(--border);background:var(--bg2);flex-wrap:wrap}
+.view-toggle{display:flex;gap:2px;background:var(--bg3);border-radius:5px;padding:3px}
+.view-btn{padding:4px 10px;border-radius:3px;border:none;background:transparent;color:var(--text-dim);font-family:'DM Mono',monospace;font-size:11px;cursor:pointer;transition:all .15s}
+.view-btn.active{background:var(--bg4);color:var(--gold)}
+.search-box{flex:1;min-width:100px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:5px 10px;color:var(--text);font-family:'DM Mono',monospace;font-size:12px}
+.search-box::placeholder{color:var(--text-faint)}
+.search-box:focus{outline:none;border-color:var(--gold)}
+.filter-sel{background:var(--bg3);border:1px solid var(--border);color:var(--text-dim);font-family:'DM Mono',monospace;font-size:11px;padding:5px 8px;border-radius:4px;cursor:pointer}
+.filter-sel:focus{outline:none;border-color:var(--gold)}
+.canvas{flex:1;overflow-y:auto;padding:16px}
+/* folder groups */
+.folder-group{margin-bottom:20px}
+.folder-header{display:flex;align-items:center;gap:9px;margin-bottom:10px;padding:7px 12px;background:var(--bg3);border-radius:6px;border-left:3px solid var(--gold)}
+.folder-title{font-family:'Fraunces',serif;font-size:14px;font-weight:500;flex:1}
+.folder-sub{font-size:10px;color:var(--text-faint)}
+/* cards */
+.cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(255px,1fr));gap:12px}
+.idea-card{background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;position:relative}
+.idea-card:hover{border-color:var(--gold);transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.idea-card.linked-hl{border-color:rgba(99,182,207,.4)}
+.idea-card.playing-card{border-color:var(--teal);box-shadow:0 0 0 2px rgba(99,182,207,.2)}
+.idea-card.raw{opacity:.75}
+.raw-badge{position:absolute;top:8px;right:8px;font-size:9px;background:var(--bg4);color:var(--text-faint);padding:2px 5px;border-radius:3px;letter-spacing:1px}
+.card-bar{height:3px}
+.card-header{padding:12px 13px 6px;display:flex;align-items:flex-start;justify-content:space-between;gap:7px}
+.card-title{font-family:'Fraunces',serif;font-size:14px;font-weight:500;flex:1;line-height:1.3}
+.card-badge{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;padding:2px 5px;border-radius:3px;flex-shrink:0;margin-top:2px}
+.badge-lyric{background:var(--gold-pale);color:var(--gold)}
+.badge-audio{background:var(--teal-pale);color:var(--teal)}
+.card-body{padding:0 13px 9px;flex:1}
+.card-preview{color:var(--text-dim);font-size:11px;line-height:1.6;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.waveform{height:32px;background:var(--bg3);border-radius:4px;display:flex;align-items:flex-end;gap:2px;padding:4px 9px;overflow:hidden}
+.w-bar{width:3px;background:var(--teal);border-radius:2px;opacity:.6}
+.card-audio-row{padding:0 13px 9px;display:flex;align-items:center;gap:7px}
+.play-mini{width:24px;height:24px;border-radius:50%;background:var(--teal);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s}
+.play-mini:hover{opacity:.8}
+.play-mini svg{fill:var(--bg);width:8px;height:8px}
+.audio-prog{flex:1;height:3px;background:var(--bg4);border-radius:2px;overflow:hidden;cursor:pointer}
+.audio-prog-fill{height:100%;background:var(--teal);border-radius:2px;width:0%;transition:width .3s}
+.audio-time{font-size:10px;color:var(--text-faint);white-space:nowrap}
+.card-footer{padding:7px 13px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:5px;flex-wrap:wrap}
+.card-tags{display:flex;gap:3px;flex-wrap:wrap;flex:1}
+.card-meta{font-size:10px;color:var(--text-faint);white-space:nowrap}
+.link-badge{font-size:10px;color:var(--teal)}
+/* list */
+.ideas-list{display:flex;flex-direction:column;gap:4px}
+.list-item{background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:9px 13px;display:flex;align-items:center;gap:11px;cursor:pointer;transition:all .15s}
+.list-item:hover{border-color:var(--gold);background:var(--bg3)}
+.list-item.raw{opacity:.7}
+.list-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.list-title{font-family:'Fraunces',serif;font-size:13px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.list-preview{font-size:11px;color:var(--text-faint);flex:2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sdiv{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text-faint);margin:13px 0 8px;display:flex;align-items:center;gap:9px}
+.sdiv::after{content:'';flex:1;height:1px;background:var(--border)}
+/* proj header */
+.proj-header{display:flex;align-items:center;gap:10px;margin-bottom:15px;padding-bottom:12px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.ph-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0}
+.ph-name{font-family:'Fraunces',serif;font-size:19px;font-weight:700}
+.ph-type{font-size:11px;color:var(--text-dim);padding:2px 8px;border:1px solid var(--border);border-radius:20px}
+.ph-folder{font-size:11px;color:var(--text-faint)}
+.ph-stats{margin-left:auto;display:flex;gap:13px}
+.stat{text-align:center}
+.stat-n{font-family:'Fraunces',serif;font-size:16px;color:var(--gold)}
+.stat-l{font-size:10px;color:var(--text-faint)}
+/* modals */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:200;align-items:center;justify-content:center;padding:14px}
+.modal-overlay.open{display:flex}
+.modal{background:var(--bg2);border:1px solid var(--border-strong);border-radius:10px;width:100%;max-width:570px;max-height:90vh;overflow-y:auto;display:flex;flex-direction:column}
+.modal.wide{max-width:680px}
+.mhdr{padding:16px 20px 0;display:flex;align-items:flex-start;justify-content:space-between;gap:9px}
+.mtypelabel{font-size:10px;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px}
+.mtitle{font-family:'Fraunces',serif;font-size:19px;font-weight:500;line-height:1.2}
+.close-btn{background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:17px;padding:3px;transition:color .15s;flex-shrink:0}
+.close-btn:hover{color:var(--text)}
+.mbody{padding:12px 20px 18px}
+.msec{margin-bottom:15px}
+.mseclabel{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text-faint);margin-bottom:6px}
+.lyric-display{background:var(--bg3);border-radius:6px;padding:12px;font-family:'Fraunces',serif;font-style:italic;line-height:1.85;color:var(--text);font-size:13px;white-space:pre-wrap;max-height:210px;overflow-y:auto}
+.apf{background:var(--bg3);border-radius:6px;padding:12px}
+.apf-top{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.play-large{width:38px;height:38px;border-radius:50%;background:var(--teal);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s}
+.play-large:hover{opacity:.85;transform:scale(1.05)}
+.play-large svg{fill:var(--bg);width:12px;height:12px}
+.apf-fname{font-size:11px;color:var(--text-dim);margin-bottom:3px;word-break:break-all}
+.apf-time{font-size:11px;color:var(--text-faint)}
+.apf-prog{width:100%;height:4px;background:var(--bg4);border-radius:2px;cursor:pointer;overflow:hidden}
+.apf-prog-fill{height:100%;background:var(--teal);border-radius:2px;width:0%;transition:width .2s}
+.wf-large{height:38px;display:flex;align-items:flex-end;gap:2px;overflow:hidden;margin-top:8px}
+.linked-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:6px}
+.linked-mini{background:var(--bg3);border:1px solid var(--teal-pale);border-radius:6px;padding:8px 10px;cursor:pointer;transition:all .15s}
+.linked-mini:hover{border-color:var(--teal)}
+.linked-mini-title{font-family:'Fraunces',serif;font-size:12px;margin-bottom:2px}
+.linked-mini-type{font-size:10px;color:var(--text-faint)}
+.modal-tags{display:flex;gap:5px;flex-wrap:wrap}
+.notes-area{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:9px 11px;color:var(--text);font-family:'DM Mono',monospace;font-size:12px;line-height:1.6;resize:vertical;min-height:68px}
+.notes-area:focus{outline:none;border-color:var(--gold)}
+.mfooter{padding:0 20px 16px;display:flex;justify-content:flex-end;gap:6px}
+/* form */
+.fg{margin-bottom:12px}
+.flabel{display:block;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text-faint);margin-bottom:4px}
+.finput{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:7px 10px;color:var(--text);font-family:'DM Mono',monospace;font-size:12px}
+.finput:focus{outline:none;border-color:var(--gold)}
+.ftextarea{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:7px 10px;color:var(--text);font-family:'DM Mono',monospace;font-size:12px;line-height:1.6;resize:vertical;min-height:90px}
+.ftextarea:focus{outline:none;border-color:var(--gold)}
+.type-sel{display:flex;gap:6px}
+.type-opt{flex:1;padding:8px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text-dim);font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;text-align:center;transition:all .15s}
+.type-opt.sl{background:var(--gold-pale);border-color:var(--gold);color:var(--gold)}
+.type-opt.sa{background:var(--teal-pale);border-color:var(--teal);color:var(--teal)}
+.proj-sel{display:flex;gap:5px;flex-wrap:wrap}
+.popt{padding:4px 10px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--text-dim);font-family:'DM Mono',monospace;font-size:11px;cursor:pointer;transition:all .15s}
+.popt.sel{border-color:var(--gold);color:var(--gold);background:var(--gold-pale)}
+.tag-input-area{display:flex;gap:4px;flex-wrap:wrap;background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:5px 9px;min-height:33px;cursor:text}
+.tag-input-area:focus-within{border-color:var(--gold)}
+.tag-chip{display:flex;align-items:center;gap:3px;padding:2px 6px;border-radius:20px;font-size:10px}
+.tag-chip-x{cursor:pointer;opacity:.6;font-size:11px}
+.tag-chip-x:hover{opacity:1}
+.tii{background:none;border:none;color:var(--text);font-family:'DM Mono',monospace;font-size:11px;outline:none;min-width:80px;flex:1}
+.link-sel{max-height:130px;overflow-y:auto;display:flex;flex-direction:column;gap:3px}
+.lopt{display:flex;align-items:center;gap:7px;padding:5px 8px;border-radius:4px;cursor:pointer;transition:background .15s}
+.lopt:hover{background:var(--bg4)}
+.lopt input[type=checkbox]{accent-color:var(--teal);flex-shrink:0}
+.lopt-name{font-family:'Fraunces',serif;font-size:12px;flex:1}
+.lopt-type{font-size:10px;color:var(--text-faint)}
+/* file picker */
+.fp{background:var(--bg3);border:1px solid var(--border);border-radius:4px;max-height:120px;overflow-y:auto}
+.fp-flabel{padding:4px 9px 2px;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--text-faint);background:var(--bg4);position:sticky;top:0}
+.fp-item{padding:5px 9px;cursor:pointer;font-size:11px;color:var(--text-dim);transition:background .1s;display:flex;align-items:center;gap:6px}
+.fp-item:hover{background:var(--bg4);color:var(--text)}
+.fp-item.selected{background:var(--teal-pale);color:var(--teal)}
+/* color swatches */
+.color-row{display:flex;gap:6px;flex-wrap:wrap}
+.csw{width:24px;height:24px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:all .15s}
+.csw.sel{border-color:var(--text);transform:scale(1.15)}
+/* settings */
+.path-drop-zone{background:var(--bg3);border:1.5px dashed var(--border-strong);border-radius:6px;padding:14px 16px;text-align:center;transition:all .2s;cursor:default}
+.path-drop-zone.drag-over{border-color:var(--gold);background:var(--gold-pale)}
+.path-drop-zone.has-path{border-style:solid;text-align:left}
+.path-drop-zone.ok{border-color:rgba(109,184,109,.5)}
+.path-drop-zone.bad{border-color:rgba(201,40,29,.4)}
+.path-val{font-size:11px;color:var(--text-dim);font-family:'DM Mono',monospace;word-break:break-all;margin-bottom:4px}
+.path-status{font-size:10px}
+.path-status.ok{color:var(--green)}
+.path-status.bad{color:var(--crimson)}
+.path-input{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:7px 10px;color:var(--text);font-family:'DM Mono',monospace;font-size:12px;margin-top:8px}
+.path-input:focus{outline:none;border-color:var(--gold)}
+/* move preview */
+.move-tbl{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:10px}
+.move-tbl th{text-align:left;padding:4px 7px;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--text-faint);border-bottom:1px solid var(--border)}
+.move-tbl td{padding:6px 7px;border-bottom:1px solid var(--border);color:var(--text-dim)}
+.move-tbl td.fname{font-family:'Fraunces',serif;color:var(--text)}
+.move-tbl td.path{font-size:10px;color:var(--text-faint)}
+.marrow{color:var(--gold);padding:0 3px}
+/* history */
+.hist-list{display:flex;flex-direction:column;gap:5px}
+.hist-item{background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:9px 11px;display:flex;align-items:center;gap:9px}
+.hist-item.undone{opacity:.5}
+.hist-title{font-family:'Fraunces',serif;font-size:13px;flex:1}
+.hist-meta{font-size:10px;color:var(--text-faint)}
+/* sync banner */
+.sync-banner{background:var(--gold-pale);border:1px solid var(--gold);border-radius:6px;padding:10px 14px;display:flex;align-items:center;gap:10px;margin-bottom:14px;font-size:12px}
+.sync-banner strong{color:var(--gold)}
+/* empty */
+.empty{text-align:center;padding:46px 20px;color:var(--text-faint)}
+.empty-icon{font-size:38px;margin-bottom:12px;opacity:.32}
+.empty-title{font-family:'Fraunces',serif;font-size:17px;color:var(--text-dim);margin-bottom:6px}
+.empty-sub{font-size:12px;line-height:1.7}
+/* toast */
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(60px);background:var(--bg3);border:1px solid var(--border-strong);color:var(--text);padding:7px 15px;border-radius:6px;font-size:12px;z-index:999;transition:transform .25s;white-space:nowrap}
+.toast.show{transform:translateX(-50%) translateY(0)}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:3px}
+@keyframes fi{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+.fi{animation:fi .2s ease forwards}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Song Chest <span>/ songwriting workspace</span></div>
+  <div class="header-actions">
+    <div class="status-pill"><div class="sdot"></div>local</div>
+    <button class="btn sm" onclick="openSettings()">⚙ Settings</button>
+    <button class="btn sm teal" onclick="runSync()">↻ Sync folders</button>
+    <button class="btn sm" onclick="openHistory()">⟲ History</button>
+    <button class="btn sm" onclick="openAddModal('lyric')">+ Lyric</button>
+    <button class="btn sm" onclick="openAddModal('audio')">+ Audio</button>
+    <button class="btn sm primary" onclick="openProjectModal()">+ Project</button>
+  </div>
+</header>
+
+<div class="app-body">
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <div class="slabel">Projects</div>
+      <div id="project-list"></div>
+      <div class="nav-item active" id="all-btn" onclick="setFilter('project','all')">
+        <div class="nav-dot" style="background:var(--text-faint)"></div>
+        <div class="nav-name">All Ideas</div>
+        <div class="nav-count" id="cnt-all">—</div>
+      </div>
+      <div class="nav-item" onclick="setFilter('project','unassigned')">
+        <div class="nav-dot" style="background:var(--text-faint);opacity:.4"></div>
+        <div class="nav-name">Unassigned</div>
+        <div class="nav-count" id="cnt-unassigned">—</div>
+      </div>
+    </div>
+    <div class="sidebar-section">
+      <div class="slabel">Type</div>
+      <div class="nav-item" id="tf-all" onclick="setFilter('type','all')"><div class="nav-dot" style="background:var(--text-faint)"></div><div class="nav-name" style="font-family:'DM Mono',monospace;font-size:12px">All</div></div>
+      <div class="nav-item" id="tf-lyric" onclick="setFilter('type','lyric')"><div class="nav-dot" style="background:var(--gold)"></div><div class="nav-name" style="font-family:'DM Mono',monospace;font-size:12px">Lyrics</div></div>
+      <div class="nav-item" id="tf-audio" onclick="setFilter('type','audio')"><div class="nav-dot" style="background:var(--teal)"></div><div class="nav-name" style="font-family:'DM Mono',monospace;font-size:12px">Audio</div></div>
+    </div>
+    <div class="sidebar-section" style="flex:1"><div class="slabel">Tags</div><div class="tag-cloud" id="sidebar-tags"></div></div>
+  </aside>
+
+  <main class="main-area">
+    <div class="toolbar">
+      <div class="view-toggle">
+        <button class="view-btn active" id="vb-grid" onclick="setView('grid')">Grid</button>
+        <button class="view-btn" id="vb-list" onclick="setView('list')">List</button>
+      </div>
+      <input class="search-box" id="search-input" placeholder="Search…" oninput="setSearch(this.value)">
+      <select class="filter-sel" onchange="setSort(this.value)">
+        <option value="newest">Newest</option>
+        <option value="oldest">Oldest</option>
+        <option value="title">A → Z</option>
+        <option value="linked">Linked first</option>
+      </select>
+    </div>
+    <div class="canvas" id="canvas"><div class="empty fi"><div class="empty-icon">♫</div><div class="empty-title">Loading…</div></div></div>
+  </main>
+</div>
+
+<!-- VIEW MODAL -->
+<div class="modal-overlay" id="view-modal">
+  <div class="modal">
+    <div class="mhdr">
+      <div style="flex:1"><div class="mtypelabel" id="vm-type"></div><div class="mtitle" id="vm-title"></div></div>
+      <button class="close-btn" onclick="closeModal('view-modal')">✕</button>
+    </div>
+    <div class="mbody">
+      <div id="vm-proj-row" class="msec"></div>
+      <div id="vm-content" class="msec"></div>
+      <div id="vm-linked-sec" class="msec" style="display:none"><div class="mseclabel">Linked Ideas</div><div class="linked-grid" id="vm-linked-grid"></div></div>
+      <div class="msec"><div class="mseclabel">Tags</div><div class="modal-tags" id="vm-tags"></div></div>
+      <div class="msec"><div class="mseclabel">Notes</div><textarea class="notes-area" id="vm-notes" placeholder="Notes…" onblur="saveNotes()"></textarea></div>
+    </div>
+    <div class="mfooter">
+      <button class="btn sm danger" onclick="deleteIdea()">Delete</button>
+      <button class="btn sm teal" id="vm-move-btn" onclick="openMoveModal()" style="display:none">Move to Project</button>
+      <button class="btn sm" onclick="openEditFromView()">Edit</button>
+      <button class="btn sm primary" onclick="saveNotes();closeModal('view-modal')">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT MODAL -->
+<div class="modal-overlay" id="edit-modal">
+  <div class="modal">
+    <div class="mhdr"><div style="flex:1"><div class="mtitle" id="em-heading">New Idea</div></div><button class="close-btn" onclick="closeModal('edit-modal')">✕</button></div>
+    <div class="mbody">
+      <div class="fg"><label class="flabel">Type</label><div class="type-sel"><button class="type-opt sl" id="t-lyric" onclick="selType('lyric')">✍ Lyric / Text</button><button class="type-opt" id="t-audio" onclick="selType('audio')">♫ Audio Riff</button></div></div>
+      <div class="fg"><label class="flabel">Title</label><input class="finput" id="em-title" placeholder="Name this idea…"></div>
+      <div id="g-content" class="fg"><label class="flabel">Lyric / Content</label><textarea class="ftextarea" id="em-content" placeholder="Lyrics, fragments…"></textarea></div>
+      <div id="g-lyricfile" class="fg" style="display:none"><label class="flabel">Or link a file from your lyrics folder</label><div class="fp" id="lyric-fp"></div><div style="margin-top:4px;font-size:11px;color:var(--text-faint)">Selected: <span id="sel-lyric-file">none</span></div></div>
+      <div id="g-audio" class="fg" style="display:none"><label class="flabel">Audio file from your audio folder</label><div class="fp" id="audio-fp"></div><div style="margin-top:4px;font-size:11px;color:var(--text-faint)">Selected: <span id="sel-audio-file">none</span></div></div>
+      <div class="fg"><label class="flabel">Project</label><div class="proj-sel" id="em-proj-sel"></div></div>
+      <div class="fg"><label class="flabel">Tags <span style="color:var(--text-faint)">(Enter or comma)</span></label><div class="tag-input-area" id="tag-area" onclick="document.getElementById('ti').focus()"><input class="tii" id="ti" placeholder="verse, hook…" onkeydown="handleTag(event)"></div></div>
+      <div class="fg"><label class="flabel">Link to other ideas</label><div class="link-sel" id="em-link-sel"></div></div>
+      <div class="fg"><label class="flabel">Notes</label><textarea class="ftextarea" id="em-notes" style="min-height:58px"></textarea></div>
+    </div>
+    <div class="mfooter"><button class="btn sm" onclick="closeModal('edit-modal')">Cancel</button><button class="btn sm primary" id="save-btn" onclick="saveIdea()">Save</button></div>
+  </div>
+</div>
+
+<!-- PROJECT MODAL -->
+<div class="modal-overlay" id="project-modal">
+  <div class="modal">
+    <div class="mhdr"><div style="flex:1"><div class="mtitle">New Project</div></div><button class="close-btn" onclick="closeModal('project-modal')">✕</button></div>
+    <div class="mbody">
+      <div class="fg"><label class="flabel">Name</label><input class="finput" id="pm-name" placeholder="Autumn EP, Long Road Home…"></div>
+      <div class="fg"><label class="flabel">Type</label><div class="type-sel"><button class="type-opt sl" id="pm-ep" onclick="selPT('EP')">EP</button><button class="type-opt" id="pm-lp" onclick="selPT('LP')">LP</button><button class="type-opt" id="pm-other" onclick="selPT('Other')">Other</button></div></div>
+      <div class="fg"><label class="flabel">Colour</label><div class="color-row" id="color-row"></div></div>
+      <div style="font-size:11px;color:var(--text-faint);margin-top:6px;line-height:1.6">Creates subfolders in your audio and lyrics folders automatically.</div>
+    </div>
+    <div class="mfooter"><button class="btn sm" onclick="closeModal('project-modal')">Cancel</button><button class="btn sm primary" onclick="saveProject()">Create Project + Folders</button></div>
+  </div>
+</div>
+
+<!-- MOVE MODAL -->
+<div class="modal-overlay" id="move-modal">
+  <div class="modal wide">
+    <div class="mhdr"><div style="flex:1"><div class="mtitle">Move files to project</div></div><button class="close-btn" onclick="closeModal('move-modal')">✕</button></div>
+    <div class="mbody">
+      <div class="fg"><label class="flabel">Move to project</label><div class="proj-sel" id="move-proj-sel"></div></div>
+      <div id="move-preview-area" style="margin-top:10px"></div>
+    </div>
+    <div class="mfooter"><button class="btn sm" onclick="closeModal('move-modal')">Cancel</button><button class="btn sm primary" id="move-confirm-btn" onclick="executeMove()" disabled>Confirm Move</button></div>
+  </div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div class="modal-overlay" id="settings-modal">
+  <div class="modal">
+    <div class="mhdr"><div style="flex:1"><div class="mtitle">Settings</div></div><button class="close-btn" onclick="closeModal('settings-modal')">✕</button></div>
+    <div class="mbody">
+      <div class="mseclabel" style="margin-bottom:8px">Folder Paths</div>
+      <p style="font-size:11px;color:var(--text-faint);margin-bottom:14px;line-height:1.7">
+        Drag a folder from Finder onto the drop zone, or type/paste the full path. After saving, click <strong style="color:var(--text-dim)">↻ Sync folders</strong> to import any files already in those folders.
+      </p>
+      <div class="fg">
+        <label class="flabel">Audio Folder</label>
+        <div class="path-drop-zone" id="dz-audio" ondragover="dzOver(event,'audio')" ondragleave="dzLeave('audio')" ondrop="dzDrop(event,'audio')">
+          <div id="dz-audio-inner"><span style="font-size:11px;color:var(--text-faint)">Drag folder here</span></div>
+        </div>
+        <input class="path-input" id="s-audio-input" placeholder="Or type / paste full path…" onblur="pathTyped('audio')">
+      </div>
+      <div class="fg">
+        <label class="flabel">Lyrics Folder</label>
+        <div class="path-drop-zone" id="dz-lyrics" ondragover="dzOver(event,'lyrics')" ondragleave="dzLeave('lyrics')" ondrop="dzDrop(event,'lyrics')">
+          <div id="dz-lyrics-inner"><span style="font-size:11px;color:var(--text-faint)">Drag folder here</span></div>
+        </div>
+        <input class="path-input" id="s-lyrics-input" placeholder="Or type / paste full path…" onblur="pathTyped('lyrics')">
+      </div>
+      <div id="s-msg" style="font-size:11px;color:var(--text-faint);margin-top:6px"></div>
+      <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+        <div class="mseclabel" style="margin-bottom:5px">Data</div>
+        <div style="font-size:11px;color:var(--text-faint);line-height:1.7">All ideas and projects are saved in <strong style="color:var(--text-dim)">data.json</strong>.<br>Folder paths are saved in <strong style="color:var(--text-dim)">config.json</strong>.</div>
+      </div>
+    </div>
+    <div class="mfooter"><button class="btn sm" onclick="closeModal('settings-modal')">Cancel</button><button class="btn sm primary" onclick="savePaths()">Save Paths</button></div>
+  </div>
+</div>
+
+<!-- HISTORY MODAL -->
+<div class="modal-overlay" id="history-modal">
+  <div class="modal wide">
+    <div class="mhdr"><div style="flex:1"><div class="mtitle">Move History</div></div><button class="close-btn" onclick="closeModal('history-modal')">✕</button></div>
+    <div class="mbody">
+      <div style="font-size:11px;color:var(--text-faint);margin-bottom:11px">Every file move is recorded here. Undo restores files to their original location.</div>
+      <div class="hist-list" id="hist-list"></div>
+    </div>
+    <div class="mfooter"><button class="btn sm primary" onclick="closeModal('history-modal')">Close</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const COLORS=['#DAA520','#C9281D','#63B6CF','#7CB67C','#B66AB6','#CF8E4E','#5B8DD9','#D9885B','#6EB8A8','#C47070'];
+let db={projects:[],ideas:[],move_history:[]};
+let cfg={audio_folder:'',lyrics_folder:'',audio_exists:false,lyrics_exists:false};
+let files={audio:[],lyrics:[]};
+let ui={view:'grid',pf:'all',tf:'all',tag:null,search:'',sort:'newest',
+        viewingId:null,editingId:null,eType:'lyric',eTags:[],eLinks:[],eSelAudio:'',eSelLyric:'',
+        pType:'EP',pColor:COLORS[0],audioEl:null,playingId:null,
+        moveIdeaId:null,movePreviews:[],moveTargetPid:null,
+        pendingPaths:{audio:'',lyrics:''}};
+
+async function api(path,method='GET',body=null){
+  const opts={method,headers:{'Content-Type':'application/json'}};
+  if(body) opts.body=JSON.stringify(body);
+  const r=await fetch(path,opts);
+  if(!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+async function loadAll(){
+  [db,cfg,files]=await Promise.all([api('/api/data'),api('/api/config'),api('/api/scan')]);
+  render();
+}
+
+// ── audio ─────────────────────────────────────────────────────
+function getAudio(){if(!ui.audioEl){ui.audioEl=new Audio();ui.audioEl.addEventListener('timeupdate',onTick);ui.audioEl.addEventListener('ended',onEnd);}return ui.audioEl;}
+function onTick(){const a=ui.audioEl;if(!a.duration)return;const pct=(a.currentTime/a.duration)*100;const f=document.getElementById('pf-'+ui.playingId);if(f)f.style.width=pct+'%';const t=document.getElementById('pt-'+ui.playingId);if(t)t.textContent=fmt(a.currentTime)+' / '+fmt(a.duration);const af=document.getElementById('apf-fill');if(af)af.style.width=pct+'%';const at=document.getElementById('apf-time');if(at)at.textContent=fmt(a.currentTime)+' / '+fmt(a.duration);}
+function onEnd(){setPI(ui.playingId,false);ui.playingId=null;}
+function fmt(s){if(!s||isNaN(s))return'0:00';return Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0');}
+function togglePlay(id,e){if(e)e.stopPropagation();const idea=db.ideas.find(i=>i.id===id);if(!idea?.audiofile){toast('No audio file linked.');return;}const a=getAudio();if(ui.playingId===id){a.paused?a.play():a.pause();setPI(id,!a.paused);return;}if(ui.playingId)setPI(ui.playingId,false);const encodedSrc='/audio/'+idea.audiofile.split('/').map(encodeURIComponent).join('/');a.pause();a.onerror=null;const newAudio=new Audio();newAudio.addEventListener('timeupdate',onTick);newAudio.addEventListener('ended',onEnd);ui.audioEl=newAudio;newAudio.onerror=(e)=>{const err=newAudio.error;console.error('Audio error',{code:err?.code,message:err?.message,src:newAudio.src,networkState:newAudio.networkState,readyState:newAudio.readyState});toast('Could not play: '+idea.audiofile);setPI(id,false);ui.playingId=null;};newAudio.src=encodedSrc;ui.playingId=id;setPI(id,true);newAudio.play().catch(err=>{console.error('play() rejected',{name:err.name,message:err.message,src:newAudio.src});if(err.name!=='AbortError'){toast('Could not play: '+idea.audiofile);setPI(id,false);ui.playingId=null;}});document.querySelectorAll('.idea-card').forEach(c=>c.classList.remove('playing-card'));const card=document.getElementById('card-'+id);if(card)card.classList.add('playing-card');}
+function setPI(id,p){const b=document.getElementById('pb-'+id);if(!b)return;b.innerHTML=p?'<svg viewBox="0 0 10 12"><rect x="0" y="0" width="3" height="12"/><rect x="6" y="0" width="3" height="12"/></svg>':'<svg viewBox="0 0 10 12"><polygon points="0,0 10,6 0,12"/></svg>';}
+function seekAudio(e,id){e.stopPropagation();const a=ui.audioEl;if(!a||ui.playingId!==id)return;a.currentTime=(e.offsetX/e.currentTarget.offsetWidth)*a.duration;}
+
+// ── render ────────────────────────────────────────────────────
+function render(){renderSidebar();renderCanvas();}
+
+function renderSidebar(){
+  const pl=document.getElementById('project-list');pl.innerHTML='';
+  db.projects.forEach(p=>{
+    const cnt=db.ideas.filter(i=>i.project===p.id).length;
+    const d=document.createElement('div');d.className='nav-item'+(ui.pf===p.id?' active':'');
+    d.innerHTML=`<div class="nav-dot" style="background:${p.color}"></div><div class="nav-name">${esc(p.name)}</div><div class="nav-count">${cnt}</div>`;
+    d.onclick=()=>setFilter('project',p.id);pl.appendChild(d);
+  });
+  document.getElementById('all-btn').className='nav-item'+(ui.pf==='all'?' active':'');
+  document.getElementById('cnt-all').textContent=db.ideas.length;
+  document.getElementById('cnt-unassigned').textContent=db.ideas.filter(i=>!i.project).length;
+  const allTags=[...new Set(db.ideas.flatMap(i=>i.tags||[]))].sort();
+  const tl=document.getElementById('sidebar-tags');tl.innerHTML='';
+  allTags.forEach(t=>{const s=document.createElement('span');s.className='tag'+(ui.tag===t?' active-tag':'');s.style.background=tCol(t,.15);s.style.color=tCol(t,1);s.textContent=t;s.onclick=()=>setFilter('tag',t);tl.appendChild(s);});
+}
+
+function getFiltered(){
+  let ideas=[...db.ideas];
+  if(ui.pf==='unassigned')ideas=ideas.filter(i=>!i.project);
+  else if(ui.pf!=='all')ideas=ideas.filter(i=>i.project===ui.pf);
+  if(ui.tf!=='all')ideas=ideas.filter(i=>i.type===ui.tf);
+  if(ui.tag)ideas=ideas.filter(i=>(i.tags||[]).includes(ui.tag));
+  if(ui.search){const q=ui.search.toLowerCase();ideas=ideas.filter(i=>i.title.toLowerCase().includes(q)||(i.content||'').toLowerCase().includes(q)||(i.tags||[]).some(t=>t.toLowerCase().includes(q)));}
+  if(ui.sort==='newest')ideas.sort((a,b)=>b.created-a.created);
+  else if(ui.sort==='oldest')ideas.sort((a,b)=>a.created-b.created);
+  else if(ui.sort==='title')ideas.sort((a,b)=>a.title.localeCompare(b.title));
+  else if(ui.sort==='linked')ideas.sort((a,b)=>(b.links||[]).length-(a.links||[]).length);
+  return ideas;
+}
+
+function renderCanvas(){
+  const canvas=document.getElementById('canvas');
+  const ideas=getFiltered();
+  let hdr='';
+  if(ui.pf!=='all'&&ui.pf!=='unassigned'){
+    const p=db.projects.find(x=>x.id===ui.pf);
+    if(p){const lc=ideas.filter(i=>i.type==='lyric').length,ac=ideas.filter(i=>i.type==='audio').length,lnc=ideas.filter(i=>(i.links||[]).length>0).length;
+    hdr=`<div class="proj-header fi"><div class="ph-dot" style="background:${p.color}"></div><div class="ph-name">${esc(p.name)}</div><div class="ph-type">${p.type}</div><div class="ph-folder">📁 ${p.folder||'—'}</div><div class="ph-stats"><div class="stat"><div class="stat-n">${lc}</div><div class="stat-l">lyrics</div></div><div class="stat"><div class="stat-n">${ac}</div><div class="stat-l">audio</div></div><div class="stat"><div class="stat-n">${lnc}</div><div class="stat-l">linked</div></div></div></div>`;}
+  }
+  const rawCount=ideas.filter(i=>i.auto_imported&&!i.tags?.length&&!i.notes).length;
+  const syncBanner=rawCount>0?`<div class="sync-banner fi"><span>✦</span><span><strong>${rawCount}</strong> auto-imported idea${rawCount!==1?'s':''} waiting to be enriched — click any card to add a title, tags, or notes.</span></div>`:'';
+  if(!ideas.length){canvas.innerHTML=hdr+`<div class="empty fi"><div class="empty-icon">✍</div><div class="empty-title">Nothing here yet</div><div class="empty-sub">Click <strong>↻ Sync folders</strong> to import existing files, or add a new idea manually.</div></div>`;return;}
+  if(ui.view==='grid'){canvas.innerHTML=hdr+syncBanner+renderGroupedGrid(ideas);}
+  else{canvas.innerHTML=hdr+syncBanner+renderList(ideas);}
+}
+
+function ideaFolder(idea){
+  const src=idea.type==='audio'?idea.audiofile:idea.lyricfile;
+  if(!src)return'';const parts=src.split('/');return parts.length>1?parts[0]:'';
+}
+
+function renderGroupedGrid(ideas){
+  const groups={};
+  ideas.forEach(idea=>{const f=ideaFolder(idea)||'__none__';if(!groups[f])groups[f]=[];groups[f].push(idea);});
+  let html='';
+  const fkeys=Object.keys(groups).filter(k=>k!=='__none__').sort();
+  fkeys.forEach(folder=>{
+    const proj=db.projects.find(p=>p.folder===folder);
+    const color=proj?proj.color:'var(--text-faint)';
+    html+=`<div class="folder-group fi"><div class="folder-header" style="border-left-color:${color}"><span>📁</span><span class="folder-title">${esc(folder)}</span><span class="folder-sub">${groups[folder].length} idea${groups[folder].length!==1?'s':''}</span></div><div class="cards-grid">${groups[folder].map(renderCard).join('')}</div></div>`;
+  });
+  if(groups['__none__']?.length){if(fkeys.length)html+=`<div class="sdiv fi">Not in a folder</div>`;html+=`<div class="cards-grid">${groups['__none__'].map(renderCard).join('')}</div>`;}
+  return html;
+}
+
+function renderList(ideas){
+  const lyrics=ideas.filter(i=>i.type==='lyric'),audio=ideas.filter(i=>i.type==='audio');
+  if(ui.tf!=='all')return`<div class="ideas-list">${ideas.map(renderListItem).join('')}</div>`;
+  let html='';
+  if(lyrics.length)html+=`<div class="sdiv fi">Lyrics (${lyrics.length})</div><div class="ideas-list">${lyrics.map(renderListItem).join('')}</div><div style="height:12px"></div>`;
+  if(audio.length)html+=`<div class="sdiv fi">Audio (${audio.length})</div><div class="ideas-list">${audio.map(renderListItem).join('')}</div>`;
+  return html;
+}
+
+function renderCard(idea){
+  const proj=idea.project?db.projects.find(p=>p.id===idea.project):null;
+  const linked=(idea.links||[]).length>0;
+  const isRaw=idea.auto_imported&&!(idea.tags||[]).length&&!idea.notes;
+  const tagHtml=(idea.tags||[]).slice(0,3).map(t=>`<span class="tag" style="background:${tCol(t,.13)};color:${tCol(t,1)}">${esc(t)}</span>`).join('');
+  const extra=(idea.tags||[]).length>3?`<span style="font-size:10px;color:var(--text-faint)">+${idea.tags.length-3}</span>`:'';
+  const projTag=proj?`<span class="tag" style="background:${proj.color}22;color:${proj.color}">${esc(proj.name)}</span>`:'';
+  let body='';
+  if(idea.type==='lyric'){body=`<div class="card-preview">${esc((idea.content||'').replace(/\n/g,' ↵ '))||'<span style="color:var(--text-faint);font-style:italic">no content yet</span>'}</div>`;}
+  else{const bars=Array.from({length:22},(_,i)=>`<div class="w-bar" style="height:${3+prand(idea.id+i)*18}px"></div>`).join('');body=`<div class="waveform">${bars}</div>`;}
+  const audioRow=idea.type==='audio'?`<div class="card-audio-row"><button class="play-mini" id="pb-${idea.id}" onclick="togglePlay('${idea.id}',event)"><svg viewBox="0 0 10 12"><polygon points="0,0 10,6 0,12"/></svg></button><div class="audio-prog" onclick="seekAudio(event,'${idea.id}')"><div class="audio-prog-fill" id="pf-${idea.id}"></div></div><span class="audio-time" id="pt-${idea.id}">—</span></div>`:'';
+  return `<div class="idea-card${linked?' linked-hl':''}${isRaw?' raw':''} fi" id="card-${idea.id}" onclick="viewIdea('${idea.id}')">
+    <div class="card-bar type-${idea.type}"></div>
+    <div class="card-header"><div class="card-title">${esc(idea.title)}</div><div class="card-badge badge-${idea.type}">${idea.type==='lyric'?'✍ lyric':'♫ audio'}</div></div>
+    <div class="card-body">${body}</div>
+    ${audioRow}
+    <div class="card-footer"><div class="card-tags">${projTag}${tagHtml}${extra}</div>${isRaw?'<span style="font-size:9px;letter-spacing:1px;color:var(--text-faint);border:1px solid var(--text-faint);padding:1px 5px;border-radius:3px">UNEDITED</span>':''}${linked?`<span class="link-badge">⇆${idea.links.length}</span>`:''}<span class="card-meta">${relDate(idea.created)}</span></div>
+  </div>`;
+}
+
+function renderListItem(idea){
+  const proj=idea.project?db.projects.find(p=>p.id===idea.project):null;
+  const linked=(idea.links||[]).length>0;
+  const isRaw=idea.auto_imported&&!(idea.tags||[]).length&&!idea.notes;
+  const fileRef=idea.type==='lyric'?(idea.lyricfile||''):( idea.audiofile||'');
+  const preview=idea.type==='lyric'?esc((idea.content||'').replace(/\n/g,' · ').slice(0,80))||(fileRef?esc(fileRef):'no content yet'):esc(idea.audiofile||'no file');
+  const tagHtml=(idea.tags||[]).slice(0,3).map(t=>`<span class="tag" style="background:${tCol(t,.12)};color:${tCol(t,1)}">${esc(t)}</span>`).join('');
+  return `<div class="list-item${linked?' linked-hl':''}${isRaw?' raw':''} fi" onclick="viewIdea('${idea.id}')">
+    <div class="list-dot" style="background:${idea.type==='lyric'?'var(--gold)':'var(--teal)'}"></div>
+    <div class="list-title">${esc(idea.title)}</div>
+    <div class="list-preview">${preview}</div>
+    <div style="display:flex;gap:4px">${tagHtml}</div>
+    ${proj?`<span style="font-size:10px;color:${proj.color}">${esc(proj.name)}</span>`:''}
+    ${linked?`<span style="font-size:10px;color:var(--teal)">⇆${idea.links.length}</span>`:''}
+    <span style="font-size:10px;color:var(--text-faint)">${relDate(idea.created)}</span>
+  </div>`;
+}
+
+// ── sync ──────────────────────────────────────────────────────
+async function runSync(){
+  toast('Syncing folders…');
+  try{
+    const res=await api('/api/sync','POST');
+    db=await api('/api/data');files=await api('/api/scan');
+    render();
+    if(res.imported>0) toast(`↻ Imported ${res.imported} new file${res.imported!==1?'s':''}.`);
+    else toast('↻ Already up to date — no new files found.');
+  }catch(e){toast('Sync error: '+e.message);}
+}
+
+// ── view modal ────────────────────────────────────────────────
+function viewIdea(id){
+  ui.viewingId=id;const idea=db.ideas.find(i=>i.id===id);if(!idea)return;
+  const proj=idea.project?db.projects.find(p=>p.id===idea.project):null;
+  const te=document.getElementById('vm-type');te.textContent=idea.type==='lyric'?'✍ Lyric Idea':'♫ Audio Idea';te.style.color=idea.type==='lyric'?'var(--gold)':'var(--teal)';
+  document.getElementById('vm-title').textContent=idea.title;
+  document.getElementById('vm-proj-row').innerHTML=proj?`<span class="tag" style="background:${proj.color}22;color:${proj.color};padding:4px 10px;border-radius:4px;font-size:11px">${esc(proj.name)} · ${proj.type} · 📁 ${proj.folder}</span>`:`<span style="font-size:11px;color:var(--text-faint)">No project assigned</span>`;
+  const cs=document.getElementById('vm-content');
+  if(idea.type==='lyric'){
+    const showLyric = async () => {
+      let content = idea.content || '';
+      if(!content && idea.lyricfile){
+        try{ const r=await fetch('/lyrics-file/'+idea.lyricfile.split('/').map(encodeURIComponent).join('/')); if(r.ok) content=await r.text(); }catch(e){}
+      }
+      cs.innerHTML=`<div class="mseclabel">Lyrics</div><div class="lyric-display">${esc(content||'—')}</div>`;
+    };
+    showLyric();
+  }
+  else{const bars=Array.from({length:32},(_,i)=>`<div class="w-bar" style="height:${4+prand(idea.id+'v'+i)*28}px"></div>`).join('');
+  cs.innerHTML=`<div class="mseclabel">Audio</div><div class="apf"><div class="apf-top"><button class="play-large" onclick="togglePlay('${idea.id}',event)"><svg viewBox="0 0 14 16"><polygon points="0,0 14,8 0,16"/></svg></button><div><div class="apf-fname">${esc(idea.audiofile||'No file linked')}</div><div class="apf-time" id="apf-time">—</div></div></div><div class="apf-prog" onclick="seekAudio(event,'${idea.id}')"><div class="apf-prog-fill" id="apf-fill"></div></div><div class="wf-large">${bars}</div></div>`;}
+  const ls=document.getElementById('vm-linked-sec'),lg=document.getElementById('vm-linked-grid');
+  if((idea.links||[]).length){ls.style.display='';lg.innerHTML=idea.links.map(lid=>{const l=db.ideas.find(i=>i.id===lid);if(!l)return'';return`<div class="linked-mini" onclick="closeModal('view-modal');setTimeout(()=>viewIdea('${l.id}'),80)"><div class="linked-mini-title">${esc(l.title)}</div><div class="linked-mini-type">${l.type==='lyric'?'✍ lyric':'♫ audio'}</div></div>`;}).join('');}
+  else ls.style.display='none';
+  document.getElementById('vm-tags').innerHTML=(idea.tags||[]).map(t=>`<span class="tag" style="background:${tCol(t,.15)};color:${tCol(t,1)};padding:3px 9px;border-radius:20px">${esc(t)}</span>`).join('')||'<span style="color:var(--text-faint);font-size:11px">No tags</span>';
+  document.getElementById('vm-notes').value=idea.notes||'';
+  const hasMF=(idea.type==='audio'&&idea.audiofile)||(idea.type==='lyric'&&idea.lyricfile);
+  document.getElementById('vm-move-btn').style.display=hasMF?'':'none';
+  document.getElementById('view-modal').classList.add('open');
+  // Sync modal play button state if this idea is already playing
+  if(ui.playingId===id){
+    const mb=document.querySelector('#view-modal .play-large');
+    if(mb&&ui.audioEl&&!ui.audioEl.paused)mb.innerHTML='<svg viewBox="0 0 14 16"><rect x="0" y="0" width="4" height="16"/><rect x="9" y="0" width="4" height="16"/></svg>';
+  }
+}
+
+async function saveNotes(){const idea=db.ideas.find(i=>i.id===ui.viewingId);if(!idea)return;idea.notes=document.getElementById('vm-notes').value;await api('/api/ideas/'+idea.id+'/notes','PATCH',{notes:idea.notes});}
+async function deleteIdea(){if(!ui.viewingId||!confirm('Delete this idea?'))return;await api('/api/ideas/'+ui.viewingId,'DELETE');closeModal('view-modal');await loadAll();toast('Idea deleted.');}
+
+// ── move modal ────────────────────────────────────────────────
+function openMoveModal(){
+  ui.moveIdeaId=ui.viewingId;ui.movePreviews=[];ui.moveTargetPid=null;
+  const sel=document.getElementById('move-proj-sel');sel.innerHTML='';
+  const none=document.createElement('button');none.className='popt';none.textContent='None (root)';none.dataset.pid='';none.onclick=()=>selectMoveTarget('');sel.appendChild(none);
+  db.projects.forEach(p=>{const btn=document.createElement('button');btn.className='popt';btn.textContent=p.name+' (📁 '+p.folder+')';btn.dataset.pid=p.id;btn.onclick=()=>selectMoveTarget(p.id);sel.appendChild(btn);});
+  document.getElementById('move-preview-area').innerHTML='<div style="color:var(--text-faint);font-size:11px">← Select a project to preview what will move.</div>';
+  document.getElementById('move-confirm-btn').disabled=true;
+  document.getElementById('move-modal').classList.add('open');
+}
+
+async function selectMoveTarget(pid){
+  ui.moveTargetPid=pid;
+  document.querySelectorAll('#move-proj-sel .popt').forEach(b=>{const on=b.dataset.pid===pid;b.className='popt'+(on?' sel':'');const p=db.projects.find(x=>x.id===b.dataset.pid);if(on&&p){b.style.borderColor=p.color;b.style.color=p.color;b.style.background=p.color+'22';}else{b.style.borderColor='';b.style.color='';b.style.background='';}});
+  const area=document.getElementById('move-preview-area');area.innerHTML='<div style="color:var(--text-faint);font-size:11px">Checking…</div>';
+  try{
+    const res=await api('/api/move/preview','POST',{idea_id:ui.moveIdeaId,target_project_id:pid||null});
+    ui.movePreviews=res.moves;
+    if(!res.moves.length){area.innerHTML='<div style="color:var(--text-faint);font-size:11px">No files to move — already in the right folder or no file linked.</div>';document.getElementById('move-confirm-btn').disabled=true;return;}
+    const hasCollision=res.moves.some(m=>m.collision);
+    area.innerHTML=`<table class="move-tbl"><thead><tr><th>File</th><th>From</th><th></th><th>To</th></tr></thead><tbody>${res.moves.map(m=>`<tr><td class="fname">${esc(m.file)}</td><td class="path">${esc(m.from)}</td><td class="marrow">→</td><td class="path">${esc(m.to)}${m.collision?' <span style="color:var(--crimson)" title="A file with this name already exists at the destination">⚠ exists</span>':''}</td></tr>`).join('')}</tbody></table><div style="font-size:11px;color:var(--text-faint)">Files will be physically moved on disk. Undo is available in History.</div>${hasCollision?'<div style="font-size:11px;color:var(--crimson);margin-top:6px">⚠ One or more destination files already exist and will be overwritten.</div>':''}`;
+    document.getElementById('move-confirm-btn').disabled=false;
+  }catch(e){area.innerHTML=`<div style="color:var(--crimson);font-size:11px">${esc(e.message)}</div>`;}
+}
+
+async function executeMove(){
+  if(!ui.movePreviews.length)return;
+  const idea=db.ideas.find(i=>i.id===ui.moveIdeaId);
+  document.getElementById('move-confirm-btn').disabled=true;
+  try{await api('/api/move/execute','POST',{idea_id:ui.moveIdeaId,from_project_id:idea?.project||null,target_project_id:ui.moveTargetPid||null,moves:ui.movePreviews});await loadAll();closeModal('move-modal');closeModal('view-modal');toast('Files moved. Use History to undo.');}
+  catch(e){toast('Error: '+e.message);document.getElementById('move-confirm-btn').disabled=false;}
+}
+
+// ── edit modal ────────────────────────────────────────────────
+function openAddModal(type){
+  ui.editingId=null;ui.eType=type||'lyric';ui.eTags=[];ui.eLinks=[];ui.eSelAudio='';ui.eSelLyric='';
+  document.getElementById('em-heading').textContent='New Idea';
+  ['em-title','em-content','em-notes'].forEach(id=>document.getElementById(id).value='');
+  selType(ui.eType);renderProjSel(null);renderLinkSel();renderTagChips();buildFilePickers();
+  document.getElementById('edit-modal').classList.add('open');
+}
+
+function openEditFromView(){
+  const idea=db.ideas.find(i=>i.id===ui.viewingId);if(!idea)return;
+  ui.editingId=idea.id;ui.eType=idea.type;ui.eTags=[...(idea.tags||[])];ui.eLinks=[...(idea.links||[])];ui.eSelAudio=idea.audiofile||'';ui.eSelLyric=idea.lyricfile||'';
+  document.getElementById('em-heading').textContent='Edit Idea';
+  document.getElementById('em-title').value=idea.title;
+  document.getElementById('em-content').value=idea.content||'';
+  document.getElementById('em-notes').value=idea.notes||'';
+  selType(idea.type);renderProjSel(idea.project);renderLinkSel();renderTagChips();buildFilePickers();
+  closeModal('view-modal');document.getElementById('edit-modal').classList.add('open');
+}
+
+function selType(t){
+  ui.eType=t;
+  document.getElementById('t-lyric').className='type-opt'+(t==='lyric'?' sl':'');
+  document.getElementById('t-audio').className='type-opt'+(t==='audio'?' sa':'');
+  document.getElementById('g-content').style.display=t==='lyric'?'':'none';
+  document.getElementById('g-lyricfile').style.display=t==='lyric'?'':'none';
+  document.getElementById('g-audio').style.display=t==='audio'?'':'none';
+}
+
+function buildFilePickers(){
+  buildPicker('audio-fp',files.audio,'audio','No audio files found');
+  buildPicker('lyric-fp',files.lyrics,'lyrics','No lyric files found');
+  document.getElementById('sel-audio-file').textContent=ui.eSelAudio||'none';
+  document.getElementById('sel-lyric-file').textContent=ui.eSelLyric||'none';
+}
+
+function buildPicker(elId,fileList,kind,emptyMsg){
+  const el=document.getElementById(elId);
+  if(!fileList.length){el.innerHTML=`<div style="padding:9px;color:var(--text-faint);font-size:11px">${emptyMsg}</div>`;return;}
+  const groups={};fileList.forEach(f=>{const g=f.folder||'';if(!groups[g])groups[g]=[];groups[g].push(f);});
+  const selectedVal=kind==='audio'?ui.eSelAudio:ui.eSelLyric;
+  el.innerHTML='';
+  Object.keys(groups).sort().forEach(folder=>{
+    if(folder){const lbl=document.createElement('div');lbl.className='fp-flabel';lbl.textContent='📁 '+folder;el.appendChild(lbl);}
+    groups[folder].forEach(f=>{
+      const item=document.createElement('div');
+      item.className='fp-item'+(f.path===selectedVal?' selected':'');
+      item.dataset.path=f.path;
+      item.dataset.kind=kind;
+      item.textContent=f.name;
+      item.onclick=()=>pickFile(kind,f.path);
+      el.appendChild(item);
+    });
+  });
+}
+
+function pickFile(kind,path){
+  const isAudio=kind==='audio';
+  const cur=isAudio?ui.eSelAudio:ui.eSelLyric;
+  const next=cur===path?'':path;
+  if(isAudio){
+    ui.eSelAudio=next;
+    document.getElementById('sel-audio-file').textContent=next||'none';
+  } else {
+    ui.eSelLyric=next;
+    document.getElementById('sel-lyric-file').textContent=next||'none';
+    if(next) fetch('/lyrics-file/'+encodeURIComponent(next)).then(r=>r.ok?r.text():Promise.reject()).then(t=>{document.getElementById('em-content').value=t;}).catch(()=>{});
+  }
+  // update selected state via data-path
+  const fpId=isAudio?'audio-fp':'lyric-fp';
+  document.querySelectorAll('#'+fpId+' .fp-item').forEach(el=>{
+    el.classList.toggle('selected', el.dataset.path===next && next!=='');
+  });
+}
+
+function renderProjSel(selectedId){
+  const c=document.getElementById('em-proj-sel');c.innerHTML='';
+  const none=document.createElement('button');none.className='popt'+(!selectedId?' sel':'');none.textContent='None';none.dataset.pid='';none.onclick=()=>pickProj('');c.appendChild(none);
+  db.projects.forEach(p=>{const btn=document.createElement('button');const on=selectedId===p.id;btn.className='popt'+(on?' sel':'');if(on){btn.style.borderColor=p.color;btn.style.color=p.color;btn.style.background=p.color+'22';}btn.textContent=p.name;btn.dataset.pid=p.id;btn.onclick=()=>pickProj(p.id);c.appendChild(btn);});
+}
+
+function pickProj(pid){document.querySelectorAll('#em-proj-sel .popt').forEach(b=>{const p=db.projects.find(x=>x.id===b.dataset.pid),on=b.dataset.pid===pid;b.className='popt'+(on?' sel':'');b.style.borderColor=on&&p?p.color:'';b.style.color=on&&p?p.color:'';b.style.background=on&&p?p.color+'22':'';}); }
+
+function renderLinkSel(){
+  const c=document.getElementById('em-link-sel');const others=db.ideas.filter(i=>i.id!==ui.editingId);
+  if(!others.length){c.innerHTML='<span style="color:var(--text-faint);font-size:11px">No other ideas yet.</span>';return;}
+  c.innerHTML='';others.forEach(i=>{const label=document.createElement('label');label.className='lopt';label.innerHTML=`<input type="checkbox" ${ui.eLinks.includes(i.id)?'checked':''} onchange="toggleLink('${i.id}',this.checked)"><span class="lopt-name">${esc(i.title)}</span><span class="lopt-type">${i.type==='lyric'?'✍':'♫'} ${i.type}</span>`;c.appendChild(label);});
+}
+
+function toggleLink(id,on){if(on){if(!ui.eLinks.includes(id))ui.eLinks.push(id);}else{ui.eLinks=ui.eLinks.filter(l=>l!==id);}}
+
+function renderTagChips(){
+  const area=document.getElementById('tag-area'),inp=document.getElementById('ti');area.innerHTML='';
+  ui.eTags.forEach(t=>{const chip=document.createElement('span');chip.className='tag-chip';chip.style.background=tCol(t,.15);chip.style.color=tCol(t,1);chip.innerHTML=`${esc(t)} <span class="tag-chip-x" onclick="removeTag('${esc(t)}')">✕</span>`;area.appendChild(chip);});
+  area.appendChild(inp);inp.value='';
+}
+
+function handleTag(e){if(e.key==='Enter'||e.key===','){e.preventDefault();const v=e.target.value.replace(',','').trim();if(v&&!ui.eTags.includes(v)){ui.eTags.push(v);renderTagChips();}else e.target.value='';}}
+function removeTag(t){ui.eTags=ui.eTags.filter(x=>x!==t);renderTagChips();}
+
+async function saveIdea(){
+  const title=document.getElementById('em-title').value.trim();if(!title){toast('Please enter a title.');return;}
+  const selProjBtn=document.querySelector('#em-proj-sel .popt.sel');const projId=selProjBtn?selProjBtn.dataset.pid:'';
+  const tv=document.getElementById('ti').value.replace(',','').trim();if(tv&&!ui.eTags.includes(tv))ui.eTags.push(tv);
+  const body={type:ui.eType,title,content:ui.eType==='lyric'?document.getElementById('em-content').value:'',audiofile:ui.eType==='audio'?ui.eSelAudio:'',lyricfile:ui.eType==='lyric'?ui.eSelLyric:'',project:projId||null,tags:[...ui.eTags],links:[...ui.eLinks],notes:document.getElementById('em-notes').value};
+  document.getElementById('save-btn').disabled=true;
+  try{if(ui.editingId){await api('/api/ideas/'+ui.editingId,'PUT',body);}else{await api('/api/ideas','POST',body);}db=await api('/api/data');files=await api('/api/scan');closeModal('edit-modal');render();toast(ui.editingId?'Idea updated.':'Idea saved.');}
+  catch(err){toast('Error: '+err.message);}
+  document.getElementById('save-btn').disabled=false;
+}
+
+// ── project modal ─────────────────────────────────────────────
+function openProjectModal(){ui.pType='EP';ui.pColor=COLORS[0];document.getElementById('pm-name').value='';selPT('EP');buildCSW();document.getElementById('project-modal').classList.add('open');}
+function selPT(t){ui.pType=t;['EP','LP','Other'].forEach(x=>document.getElementById('pm-'+x.toLowerCase()).className='type-opt'+(x===t?' sl':''));}
+function buildCSW(){const row=document.getElementById('color-row');row.innerHTML='';COLORS.forEach(c=>{const s=document.createElement('div');s.className='csw'+(c===ui.pColor?' sel':'');s.style.background=c;s.onclick=()=>{ui.pColor=c;document.querySelectorAll('.csw').forEach(x=>x.classList.remove('sel'));s.classList.add('sel');};row.appendChild(s);});}
+async function saveProject(){const name=document.getElementById('pm-name').value.trim();if(!name){toast('Please enter a project name.');return;}const p=await api('/api/projects','POST',{name,type:ui.pType,color:ui.pColor});db.projects.push(p);files=await api('/api/scan');closeModal('project-modal');render();toast(`"${name}" created — folders ready on disk.`);}
+
+// ── settings modal ────────────────────────────────────────────
+function openSettings(){
+  ui.pendingPaths={audio:cfg.audio_folder||'',lyrics:cfg.lyrics_folder||''};
+  updateDZ('audio',cfg.audio_folder,cfg.audio_exists);
+  updateDZ('lyrics',cfg.lyrics_folder,cfg.lyrics_exists);
+  document.getElementById('s-audio-input').value=cfg.audio_folder||'';
+  document.getElementById('s-lyrics-input').value=cfg.lyrics_folder||'';
+  document.getElementById('s-msg').textContent='';
+  document.getElementById('settings-modal').classList.add('open');
+}
+
+function updateDZ(kind,path,exists){
+  const dz=document.getElementById('dz-'+kind);
+  const inner=document.getElementById('dz-'+kind+'-inner');
+  if(path){
+    dz.className='path-drop-zone has-path '+(exists?'ok':'bad');
+    inner.innerHTML=`<div class="path-val">${esc(path)}</div><div class="path-status ${exists?'ok':'bad'}">${exists?'✓ folder found':'⚠ folder not found'}</div>`;
+  } else {
+    dz.className='path-drop-zone';
+    inner.innerHTML='<span style="font-size:11px;color:var(--text-faint)">Drag folder here</span>';
+  }
+}
+
+function dzOver(e,kind){e.preventDefault();document.getElementById('dz-'+kind).classList.add('drag-over');}
+function dzLeave(kind){document.getElementById('dz-'+kind).classList.remove('drag-over');}
+function dzDrop(e,kind){
+  e.preventDefault();dzLeave(kind);
+  // When a folder is dragged from Finder, the first file's path gives us the folder path
+  const items=e.dataTransfer.items;
+  if(items&&items.length){
+    for(const item of items){
+      if(item.kind==='file'){
+        const file=item.getAsFile();
+        if(file){
+          // file.path is available in Electron; in Chrome we get the name only
+          // Use webkitRelativePath or just show the name and let user confirm via input
+          const guessedPath=file.path||file.name;
+          // If it looks like an absolute path, use it; otherwise prompt
+          if(guessedPath.startsWith('/')){
+            // it's a folder path — strip the filename to get the folder
+            const folderPath=guessedPath.includes('/')?guessedPath.substring(0,guessedPath.lastIndexOf('/')):guessedPath;
+            ui.pendingPaths[kind]=folderPath;
+            document.getElementById('s-'+kind+'-input').value=folderPath;
+            updateDZ(kind,folderPath,true);
+          } else {
+            toast('Drag a folder from Finder, or paste the full path below.');
+          }
+          break;
+        }
+      }
+    }
+  }
+}
+
+function pathTyped(kind){
+  const val=document.getElementById('s-'+kind+'-input').value.trim();
+  if(val){ui.pendingPaths[kind]=val;updateDZ(kind,val,true);}
+}
+
+async function savePaths(){
+  const audio=document.getElementById('s-audio-input').value.trim()||ui.pendingPaths.audio;
+  const lyrics=document.getElementById('s-lyrics-input').value.trim()||ui.pendingPaths.lyrics;
+  if(!audio&&!lyrics){toast('Enter at least one path.');return;}
+  try{
+    const body={};
+    if(audio) body.audio_folder=audio;
+    if(lyrics) body.lyrics_folder=lyrics;
+    cfg=await api('/api/config','POST',body);
+    updateDZ('audio',cfg.audio_folder,cfg.audio_exists);
+    updateDZ('lyrics',cfg.lyrics_folder,cfg.lyrics_exists);
+    document.getElementById('s-msg').textContent='✓ Paths saved. Click ↻ Sync folders to import your files.';
+    document.getElementById('s-msg').style.color='var(--green)';
+    toast('Paths saved — now click ↻ Sync folders.');
+  }catch(e){toast('Error: '+e.message);}
+}
+
+// ── history modal ─────────────────────────────────────────────
+async function openHistory(){
+  const hist=await api('/api/move/history');
+  const list=document.getElementById('hist-list');
+  if(!hist.length){list.innerHTML='<div style="color:var(--text-faint);font-size:12px">No moves recorded yet.</div>';}
+  else{list.innerHTML=hist.map(h=>{const fp=h.from_project?db.projects.find(p=>p.id===h.from_project):null;const tp=h.to_project?db.projects.find(p=>p.id===h.to_project):null;return`<div class="hist-item${h.undone?' undone':''}"><div style="flex:1"><div class="hist-title">${esc(h.idea_title)}</div><div class="hist-meta">${esc(fp?fp.name:'root')} → ${esc(tp?tp.name:'root')} · ${new Date(h.ts).toLocaleString()} · ${h.moves.length} file(s)</div></div>${h.undone?'<span style="font-size:11px;color:var(--text-faint)">undone</span>':`<button class="btn sm teal" onclick="undoMove('${h.id}')">Undo</button>`}</div>`;}).join('');}
+  document.getElementById('history-modal').classList.add('open');
+}
+
+async function undoMove(hid){
+  if(!confirm('Restore files to their original location?'))return;
+  try{const res=await api('/api/move/undo/'+hid,'POST');if(res.warnings?.length)toast('Partial undo: '+res.warnings[0]);else toast('Undone.');await loadAll();openHistory();}
+  catch(e){toast('Error: '+e.message);}
+}
+
+// ── controls & utils ──────────────────────────────────────────
+function setFilter(kind,val){
+  if(kind==='project'){ui.pf=val;ui.tag=null;}
+  else if(kind==='type'){ui.tf=val;['all','lyric','audio'].forEach(t=>{const el=document.getElementById('tf-'+t);if(el)el.className='nav-item'+(t===val?' active':'');});}
+  else if(kind==='tag')ui.tag=ui.tag===val?null:val;
+  render();
+}
+function setView(v){ui.view=v;document.getElementById('vb-grid').className='view-btn'+(v==='grid'?' active':'');document.getElementById('vb-list').className='view-btn'+(v==='list'?' active':'');render();}
+function setSearch(v){ui.search=v;render();}
+function setSort(v){ui.sort=v;render();}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');}));
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function tCol(tag,alpha){let h=0;for(const c of tag)h=(h*31+c.charCodeAt(0))&0xffffffff;const p=[[218,165,32],[201,40,29],[99,182,207],[124,182,124],[182,106,182],[207,142,78],[91,141,217],[217,136,91],[110,184,168]];const[r,g,b]=p[Math.abs(h)%p.length];return`rgba(${r},${g},${b},${alpha})`;}
+function prand(seed){let h=0;for(const c of String(seed))h=(h*31+c.charCodeAt(0))&0x7fffffff;return(h%100)/100;}
+function relDate(ts){const d=Date.now()-ts,m=Math.floor(d/60000);if(m<60)return m<=1?'just now':m+'m ago';const hr=Math.floor(m/60);if(hr<24)return hr+'h ago';const dy=Math.floor(hr/24);if(dy<7)return dy+'d ago';return new Date(ts).toLocaleDateString('en-GB',{day:'numeric',month:'short'});}
+let toastTimer;
+function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),3200);}
+
+loadAll();
+</script>
+</body>
+</html>
