@@ -212,6 +212,16 @@ header{display:flex;align-items:center;justify-content:space-between;padding:13p
 ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:3px}
 @keyframes fi{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 .fi{animation:fi .2s ease forwards}
+/* bulk select */
+.card-check{position:absolute;top:8px;left:8px;width:18px;height:18px;border-radius:4px;border:1.5px solid var(--border-strong);background:var(--bg3);display:none;align-items:center;justify-content:center;z-index:2;pointer-events:none}
+.canvas.bulk-mode .idea-card .card-check{display:flex}
+.idea-card.sel-card{border-color:var(--gold)!important;background:var(--gold-pale)}
+.idea-card.sel-card .card-check{background:var(--gold);border-color:var(--gold)}
+.idea-card.sel-card .card-check::after{content:'✓';color:var(--bg);font-size:11px;font-weight:700;line-height:1}
+.list-item.sel-card{border-color:var(--gold)!important;background:var(--gold-pale)}
+.bulk-bar{position:fixed;bottom:0;left:0;right:0;background:var(--bg2);border-top:1px solid var(--border-strong);padding:10px 20px;display:flex;align-items:center;gap:10px;z-index:150;transform:translateY(100%);transition:transform .2s}
+.bulk-bar.show{transform:translateY(0)}
+.bulk-tag-pop{position:fixed;bottom:53px;left:50%;transform:translateX(-50%);background:var(--bg3);border:1px solid var(--border-strong);border-radius:6px;padding:9px 12px;z-index:160;gap:6px;align-items:center;display:none}
 </style>
 </head>
 <body>
@@ -259,6 +269,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:13p
         <button class="view-btn active" id="vb-grid" onclick="setView('grid')">Grid</button>
         <button class="view-btn" id="vb-list" onclick="setView('list')">List</button>
       </div>
+      <button class="btn sm" id="bulk-toggle" onclick="toggleBulkMode()">Select</button>
       <input class="search-box" id="search-input" placeholder="Search…" oninput="setSearch(this.value)">
       <select class="filter-sel" onchange="setSort(this.value)">
         <option value="newest">Newest</option>
@@ -302,7 +313,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:13p
       <div class="fg"><label class="flabel">Type</label><div class="type-sel"><button class="type-opt sl" id="t-lyric" onclick="selType('lyric')">✍ Lyric / Text</button><button class="type-opt" id="t-audio" onclick="selType('audio')">♫ Audio Riff</button></div></div>
       <div class="fg"><label class="flabel">Title</label><input class="finput" id="em-title" placeholder="Name this idea…"></div>
       <div id="g-content" class="fg"><label class="flabel">Lyric / Content</label><textarea class="ftextarea" id="em-content" placeholder="Lyrics, fragments…"></textarea></div>
-      <div id="g-lyricfile" class="fg" style="display:none"><label class="flabel">Or link a file from your lyrics folder</label><div class="fp" id="lyric-fp"></div><div style="margin-top:4px;font-size:11px;color:var(--text-faint)">Selected: <span id="sel-lyric-file">none</span></div></div>
+      <div id="g-lyricfile" class="fg" style="display:none"><label class="flabel">Or link a file from your lyrics folder</label><div class="fp" id="lyric-fp"></div><div style="margin-top:4px;font-size:11px;color:var(--text-faint)">Selected: <span id="sel-lyric-file">none</span></div><div id="lyric-preview-area" style="display:none;margin-top:8px"></div></div>
       <div id="g-audio" class="fg" style="display:none"><label class="flabel">Audio file from your audio folder</label><div class="fp" id="audio-fp"></div><div style="margin-top:4px;font-size:11px;color:var(--text-faint)">Selected: <span id="sel-audio-file">none</span></div></div>
       <div class="fg"><label class="flabel">Project</label><div class="proj-sel" id="em-proj-sel"></div></div>
       <div class="fg"><label class="flabel">Tags <span style="color:var(--text-faint)">(Enter or comma)</span></label><div class="tag-input-area" id="tag-area" onclick="document.getElementById('ti').focus()"><input class="tii" id="ti" placeholder="verse, hook…" onkeydown="handleTag(event)"></div></div>
@@ -367,6 +378,14 @@ header{display:flex;align-items:center;justify-content:space-between;padding:13p
         <div class="mseclabel" style="margin-bottom:5px">Data</div>
         <div style="font-size:11px;color:var(--text-faint);line-height:1.7">All ideas and projects are saved in <strong style="color:var(--text-dim)">data.json</strong>.<br>Folder paths are saved in <strong style="color:var(--text-dim)">config.json</strong>.</div>
       </div>
+      <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+        <div class="mseclabel" style="margin-bottom:8px">Export / Backup</div>
+        <div style="display:flex;gap:14px;margin-bottom:10px;font-size:12px;color:var(--text-dim)">
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="exp-audio" style="accent-color:var(--gold)"> Include audio files</label>
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="exp-lyrics" style="accent-color:var(--gold)"> Include lyrics files</label>
+        </div>
+        <button class="btn sm" onclick="downloadExport()">⬇ Download backup.zip</button>
+      </div>
     </div>
     <div class="mfooter"><button class="btn sm" onclick="closeModal('settings-modal')">Cancel</button><button class="btn sm primary" onclick="savePaths()">Save Paths</button></div>
   </div>
@@ -384,6 +403,19 @@ header{display:flex;align-items:center;justify-content:space-between;padding:13p
   </div>
 </div>
 
+<div class="bulk-bar" id="bulk-bar">
+  <span id="bulk-count" style="font-size:12px;color:var(--text-dim);flex:1">0 selected</span>
+  <select class="filter-sel" id="bulk-proj-sel" onchange="bulkAssignProject(this.value);this.selectedIndex=0">
+    <option value="">Assign to project…</option>
+  </select>
+  <button class="btn sm" onclick="bulkTagInput()">+ Tag</button>
+  <button class="btn sm danger" onclick="bulkDelete()">Delete</button>
+  <button class="btn sm" onclick="exitBulkMode()">Cancel</button>
+</div>
+<div class="bulk-tag-pop" id="bulk-tag-pop">
+  <input class="finput" id="bulk-tag-inp" style="width:130px;padding:4px 8px;font-size:11px" placeholder="tag name…" onkeydown="if(event.key==='Enter')bulkApplyTag()">
+  <button class="btn sm primary" onclick="bulkApplyTag()">Add</button>
+</div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -395,7 +427,8 @@ let ui={view:'grid',pf:'all',tf:'all',tag:null,search:'',sort:'newest',
         viewingId:null,editingId:null,eType:'lyric',eTags:[],eLinks:[],eSelAudio:'',eSelLyric:'',
         pType:'EP',pColor:COLORS[0],audioEl:null,playingId:null,
         moveIdeaId:null,movePreviews:[],moveTargetPid:null,
-        pendingPaths:{audio:'',lyrics:''}};
+        pendingPaths:{audio:'',lyrics:''},
+        bulkMode:false,selected:new Set()};
 
 async function api(path,method='GET',body=null){
   const opts={method,headers:{'Content-Type':'application/json'}};
@@ -507,7 +540,8 @@ function renderCard(idea){
   if(idea.type==='lyric'){body=`<div class="card-preview">${esc((idea.content||'').replace(/\n/g,' ↵ '))||'<span style="color:var(--text-faint);font-style:italic">no content yet</span>'}</div>`;}
   else{const bars=Array.from({length:22},(_,i)=>`<div class="w-bar" style="height:${3+prand(idea.id+i)*18}px"></div>`).join('');body=`<div class="waveform">${bars}</div>`;}
   const audioRow=idea.type==='audio'?`<div class="card-audio-row"><button class="play-mini" id="pb-${idea.id}" onclick="togglePlay('${idea.id}',event)"><svg viewBox="0 0 10 12"><polygon points="0,0 10,6 0,12"/></svg></button><div class="audio-prog" onclick="seekAudio(event,'${idea.id}')"><div class="audio-prog-fill" id="pf-${idea.id}"></div></div><span class="audio-time" id="pt-${idea.id}">—</span></div>`:'';
-  return `<div class="idea-card${linked?' linked-hl':''}${isRaw?' raw':''} fi" id="card-${idea.id}" onclick="viewIdea('${idea.id}')">
+  return `<div class="idea-card${linked?' linked-hl':''}${isRaw?' raw':''} fi" id="card-${idea.id}" onclick="cardClick('${idea.id}')">
+    <div class="card-check"></div>
     <div class="card-bar type-${idea.type}"></div>
     <div class="card-header"><div class="card-title">${esc(idea.title)}</div><div class="card-badge badge-${idea.type}">${idea.type==='lyric'?'✍ lyric':'♫ audio'}</div></div>
     <div class="card-body">${body}</div>
@@ -523,7 +557,7 @@ function renderListItem(idea){
   const fileRef=idea.type==='lyric'?(idea.lyricfile||''):( idea.audiofile||'');
   const preview=idea.type==='lyric'?esc((idea.content||'').replace(/\n/g,' · ').slice(0,80))||(fileRef?esc(fileRef):'no content yet'):esc(idea.audiofile||'no file');
   const tagHtml=(idea.tags||[]).slice(0,3).map(t=>`<span class="tag" style="background:${tCol(t,.12)};color:${tCol(t,1)}">${esc(t)}</span>`).join('');
-  return `<div class="list-item${linked?' linked-hl':''}${isRaw?' raw':''} fi" onclick="viewIdea('${idea.id}')">
+  return `<div class="list-item${linked?' linked-hl':''}${isRaw?' raw':''} fi" id="li-${idea.id}" onclick="cardClick('${idea.id}')">
     <div class="list-dot" style="background:${idea.type==='lyric'?'var(--gold)':'var(--teal)'}"></div>
     <div class="list-title">${esc(idea.title)}</div>
     <div class="list-preview">${preview}</div>
@@ -622,6 +656,7 @@ function openAddModal(type){
   ui.editingId=null;ui.eType=type||'lyric';ui.eTags=[];ui.eLinks=[];ui.eSelAudio='';ui.eSelLyric='';
   document.getElementById('em-heading').textContent='New Idea';
   ['em-title','em-content','em-notes'].forEach(id=>document.getElementById(id).value='');
+  const lpa=document.getElementById('lyric-preview-area');if(lpa)lpa.style.display='none';
   selType(ui.eType);renderProjSel(null);renderLinkSel();renderTagChips();buildFilePickers();
   document.getElementById('edit-modal').classList.add('open');
 }
@@ -683,7 +718,13 @@ function pickFile(kind,path){
   } else {
     ui.eSelLyric=next;
     document.getElementById('sel-lyric-file').textContent=next||'none';
-    if(next) fetch('/lyrics-file/'+encodeURIComponent(next)).then(r=>r.ok?r.text():Promise.reject()).then(t=>{document.getElementById('em-content').value=t;}).catch(()=>{});
+    const pa=document.getElementById('lyric-preview-area');
+    if(next){
+      fetch('/lyrics-file/'+next.split('/').map(encodeURIComponent).join('/')).then(r=>r.ok?r.text():Promise.reject()).then(t=>{
+        document.getElementById('em-content').value=t;
+        if(pa){pa.style.display='';pa.innerHTML=`<div class="mseclabel" style="margin-bottom:4px">File preview</div><div class="lyric-display" style="max-height:140px;font-size:12px">${esc(t||'(empty file)')}</div>`;}
+      }).catch(()=>{if(pa)pa.style.display='none';});
+    } else {if(pa)pa.style.display='none';}
   }
   // update selected state via data-path
   const fpId=isAudio?'audio-fp':'lyric-fp';
@@ -844,13 +885,88 @@ function relDate(ts){const d=Date.now()-ts,m=Math.floor(d/60000);if(m<60)return 
 let toastTimer;
 function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),3200);}
 
+// ── bulk select ───────────────────────────────────────────────
+function toggleBulkMode(){
+  if(ui.bulkMode){exitBulkMode();return;}
+  ui.bulkMode=true;
+  const btn=document.getElementById('bulk-toggle');
+  if(btn){btn.className='btn sm primary';btn.textContent='✕ Select';}
+  document.getElementById('canvas').classList.add('bulk-mode');
+}
+function exitBulkMode(){
+  if(!ui.bulkMode)return;
+  ui.selected.forEach(id=>{const c=document.getElementById('card-'+id)||document.getElementById('li-'+id);if(c)c.classList.remove('sel-card');});
+  ui.bulkMode=false;ui.selected=new Set();
+  const btn=document.getElementById('bulk-toggle');if(btn){btn.className='btn sm';btn.textContent='Select';}
+  document.getElementById('canvas').classList.remove('bulk-mode');
+  document.getElementById('bulk-bar').classList.remove('show');
+  const pop=document.getElementById('bulk-tag-pop');if(pop)pop.style.display='none';
+}
+function cardClick(id){if(!ui.bulkMode){viewIdea(id);return;}toggleSelect(id);}
+function toggleSelect(id){
+  if(ui.selected.has(id))ui.selected.delete(id);else ui.selected.add(id);
+  const c=document.getElementById('card-'+id)||document.getElementById('li-'+id);
+  if(c)c.classList.toggle('sel-card',ui.selected.has(id));
+  updateBulkBar();
+}
+function updateBulkBar(){
+  const n=ui.selected.size;
+  document.getElementById('bulk-bar').classList.toggle('show',n>0);
+  document.getElementById('bulk-count').textContent=n+' idea'+(n!==1?'s':'')+' selected';
+  const sel=document.getElementById('bulk-proj-sel');
+  sel.innerHTML='<option value="">Assign to project…</option><option value="__none__">None (unassigned)</option>';
+  db.projects.forEach(p=>{const o=document.createElement('option');o.value=p.id;o.textContent=p.name;sel.appendChild(o);});
+}
+async function bulkDelete(){
+  const n=ui.selected.size;if(!n)return;
+  if(!confirm(`Delete ${n} idea${n!==1?'s':''}? This cannot be undone.`))return;
+  const ids=[...ui.selected];
+  try{for(const id of ids)await api('/api/ideas/'+id,'DELETE');exitBulkMode();db=await api('/api/data');render();toast(`Deleted ${n} idea${n!==1?'s':''}.`);}
+  catch(e){toast('Error: '+e.message);}
+}
+async function bulkAssignProject(pid){
+  if(!pid||!ui.selected.size)return;
+  const realPid=pid==='__none__'?null:pid;
+  const ids=[...ui.selected];
+  try{
+    for(const id of ids){const idea=db.ideas.find(i=>i.id===id);if(idea)await api('/api/ideas/'+id,'PUT',{...idea,project:realPid});}
+    exitBulkMode();db=await api('/api/data');render();
+    const proj=db.projects.find(p=>p.id===realPid);
+    toast(`Assigned ${ids.length} idea${ids.length!==1?'s':''} to ${proj?'"'+proj.name+'"':'no project'}.`);
+  }catch(e){toast('Error: '+e.message);}
+}
+function bulkTagInput(){
+  const pop=document.getElementById('bulk-tag-pop');
+  const vis=pop.style.display==='flex';pop.style.display=vis?'none':'flex';
+  if(!vis)document.getElementById('bulk-tag-inp').focus();
+}
+async function bulkApplyTag(){
+  const tag=document.getElementById('bulk-tag-inp').value.trim();if(!tag)return;
+  const ids=[...ui.selected];
+  try{
+    for(const id of ids){const idea=db.ideas.find(i=>i.id===id);if(idea&&!(idea.tags||[]).includes(tag))await api('/api/ideas/'+id,'PUT',{...idea,tags:[...(idea.tags||[]),tag]});}
+    document.getElementById('bulk-tag-pop').style.display='none';
+    document.getElementById('bulk-tag-inp').value='';
+    exitBulkMode();db=await api('/api/data');render();
+    toast(`Tag "${tag}" added to ${ids.length} idea${ids.length!==1?'s':''}.`);
+  }catch(e){toast('Error: '+e.message);}
+}
+
+// ── export ────────────────────────────────────────────────────
+function downloadExport(){
+  const a=document.getElementById('exp-audio').checked?1:0;
+  const l=document.getElementById('exp-lyrics').checked?1:0;
+  window.location.href='/api/export?audio='+a+'&lyrics='+l;
+}
+
 document.addEventListener('keydown',function(e){
   const tag=document.activeElement.tagName;
   const inInput=tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT';
   const mod=e.metaKey||e.ctrlKey;
 
-  // Escape — close topmost open modal
+  // Escape — exit bulk mode or close topmost open modal
   if(e.key==='Escape'){
+    if(ui.bulkMode){exitBulkMode();return;}
     const modals=['edit-modal','view-modal','move-modal','project-modal','settings-modal','history-modal'];
     for(const id of modals){const m=document.getElementById(id);if(m&&m.classList.contains('open')){closeModal(id);return;}}
   }
