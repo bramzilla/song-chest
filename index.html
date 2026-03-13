@@ -218,6 +218,18 @@ header{display:flex;align-items:center;justify-content:space-between;padding:13p
 .ir-bar-wrap{flex:1;height:4px;background:var(--bg4);border-radius:2px;overflow:hidden}
 .ir-bar{height:100%;border-radius:2px;transition:width .3s}
 .ir-count{font-size:11px;color:var(--text-faint);min-width:22px;text-align:right;flex-shrink:0}
+.coming-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px}
+.coming-tile{background:var(--bg3);border:1px solid var(--border);border-radius:8px;overflow:hidden;position:relative;opacity:.82}
+.coming-tile-head{padding:10px 13px 8px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border)}
+.coming-tile-icon{font-size:15px;line-height:1}
+.coming-tile-title{font-family:'Fraunces',serif;font-size:13px;font-weight:500;flex:1}
+.coming-soon-badge{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;padding:2px 6px;border-radius:3px;background:var(--bg4);color:var(--text-faint);border:1px solid var(--border)}
+.coming-tile-body{padding:8px 13px 10px;display:flex;flex-direction:column;gap:4px}
+.ct-row{display:flex;align-items:center;gap:8px;padding:4px 0}
+.ct-dot{width:6px;height:6px;border-radius:50%;background:var(--border-strong);flex-shrink:0}
+.ct-label{font-family:'Fraunces',serif;font-size:11px;color:var(--text-dim);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ct-meta{font-size:10px;color:var(--text-faint);white-space:nowrap}
+.ct-empty{font-size:11px;color:var(--text-faint);padding:6px 0;line-height:1.6}
 /* sync banner */
 .sync-banner{background:var(--gold-pale);border:1px solid var(--gold);border-radius:6px;padding:10px 14px;display:flex;align-items:center;gap:10px;margin-bottom:14px;font-size:12px}
 .sync-banner strong{color:var(--gold)}
@@ -429,6 +441,33 @@ header{display:flex;align-items:center;justify-content:space-between;padding:13p
       <div class="insight-section" id="ins-proj-list"></div>
       <div class="mseclabel" style="margin:14px 0 8px">Top Tags</div>
       <div class="insight-section" id="ins-tag-list"></div>
+      <div class="coming-row">
+        <div class="coming-tile">
+          <div class="coming-tile-head">
+            <span class="coming-tile-icon">🕐</span>
+            <span class="coming-tile-title">Activity Feed</span>
+            <span class="coming-soon-badge">soon</span>
+          </div>
+          <div class="coming-tile-body" id="ct-activity">
+            <div class="ct-row"><div class="ct-dot" style="background:var(--teal)"></div><div class="ct-label">Added tag "hook" to verse sketch</div><div class="ct-meta">2m ago</div></div>
+            <div class="ct-row"><div class="ct-dot" style="background:var(--gold)"></div><div class="ct-label">Created "bridge melody"</div><div class="ct-meta">1h ago</div></div>
+            <div class="ct-row"><div class="ct-dot" style="background:var(--text-faint)"></div><div class="ct-label">Assigned "rough take 3" to Summer EP</div><div class="ct-meta">3h ago</div></div>
+            <div class="ct-row"><div class="ct-dot" style="background:var(--gold)"></div><div class="ct-label">Edited notes on "chorus draft"</div><div class="ct-meta">yesterday</div></div>
+          </div>
+        </div>
+        <div class="coming-tile">
+          <div class="coming-tile-head">
+            <span class="coming-tile-icon">🗑</span>
+            <span class="coming-tile-title">Trash</span>
+            <span class="coming-soon-badge">soon</span>
+          </div>
+          <div class="coming-tile-body" id="ct-trash">
+            <div class="ct-empty">Deleted ideas would appear here so you can restore them before they're gone for good.</div>
+            <div class="ct-row" style="opacity:.5"><div class="ct-dot" style="background:var(--crimson)"></div><div class="ct-label">old verse attempt</div><div class="ct-meta">3d ago</div></div>
+            <div class="ct-row" style="opacity:.5"><div class="ct-dot" style="background:var(--crimson)"></div><div class="ct-label">scratch loop 7</div><div class="ct-meta">1w ago</div></div>
+          </div>
+        </div>
+      </div>
     </div>
     <div class="mfooter"><button class="btn sm primary" onclick="closeModal('insights-modal')">Close</button></div>
   </div>
