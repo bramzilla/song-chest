@@ -206,6 +206,18 @@ header{display:flex;align-items:center;justify-content:space-between;padding:13p
 .hist-item.undone{opacity:.5}
 .hist-title{font-family:'Fraunces',serif;font-size:13px;flex:1}
 .hist-meta{font-size:10px;color:var(--text-faint)}
+/* insights */
+.insights-stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:9px;margin-bottom:16px}
+.stat-card{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px 14px;text-align:center}
+.stat-num{font-family:'Fraunces',serif;font-size:28px;font-weight:700;color:var(--gold);line-height:1.1}
+.stat-label{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-faint);margin-top:4px}
+.insight-section{margin-bottom:4px}
+.insight-row{display:flex;align-items:center;gap:9px;padding:6px 0;border-bottom:1px solid var(--border)}
+.insight-row:last-child{border-bottom:none}
+.ir-name{font-family:'Fraunces',serif;font-size:12px;width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0}
+.ir-bar-wrap{flex:1;height:4px;background:var(--bg4);border-radius:2px;overflow:hidden}
+.ir-bar{height:100%;border-radius:2px;transition:width .3s}
+.ir-count{font-size:11px;color:var(--text-faint);min-width:22px;text-align:right;flex-shrink:0}
 /* sync banner */
 .sync-banner{background:var(--gold-pale);border:1px solid var(--gold);border-radius:6px;padding:10px 14px;display:flex;align-items:center;gap:10px;margin-bottom:14px;font-size:12px}
 .sync-banner strong{color:var(--gold)}
@@ -239,6 +251,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:13p
     <div class="status-pill"><div class="sdot"></div>local</div>
     <button class="btn sm" onclick="openSettings()">⚙ Settings</button>
     <button class="btn sm teal" onclick="runSync()">↻ Sync folders</button>
+    <button class="btn sm" onclick="openInsights()">◎ Insights</button>
     <button class="btn sm" onclick="openHistory()">⟲ History</button>
     <button class="btn sm" onclick="openAddModal('lyric')">+ Lyric</button>
     <button class="btn sm" onclick="openAddModal('audio')">+ Audio</button>
@@ -403,6 +416,21 @@ header{display:flex;align-items:center;justify-content:space-between;padding:13p
       </div>
     </div>
     <div class="mfooter"><button class="btn sm" onclick="closeModal('settings-modal')">Cancel</button><button class="btn sm primary" onclick="savePaths()">Save Paths</button></div>
+  </div>
+</div>
+
+<!-- INSIGHTS MODAL -->
+<div class="modal-overlay" id="insights-modal">
+  <div class="modal wide">
+    <div class="mhdr"><div style="flex:1"><div class="mtitle">Insights</div></div><button class="close-btn" onclick="closeModal('insights-modal')">✕</button></div>
+    <div class="mbody">
+      <div class="insights-stats" id="ins-stat-grid"></div>
+      <div class="mseclabel" style="margin-bottom:8px">Ideas by Project</div>
+      <div class="insight-section" id="ins-proj-list"></div>
+      <div class="mseclabel" style="margin:14px 0 8px">Top Tags</div>
+      <div class="insight-section" id="ins-tag-list"></div>
+    </div>
+    <div class="mfooter"><button class="btn sm primary" onclick="closeModal('insights-modal')">Close</button></div>
   </div>
 </div>
 
@@ -931,6 +959,44 @@ async function savePaths(){
   }catch(e){toast('Error: '+e.message);}
 }
 
+// ── insights modal ────────────────────────────────────────────
+function openInsights(){
+  const ideas=db.ideas, projects=db.projects;
+  const audio=ideas.filter(i=>i.type==='audio').length;
+  const lyric=ideas.filter(i=>i.type==='lyric').length;
+  const linked=ideas.filter(i=>i.links&&i.links.length>0).length;
+
+  // stat cards
+  document.getElementById('ins-stat-grid').innerHTML=[
+    {n:ideas.length,l:'Total Ideas'},
+    {n:audio,l:'Audio',col:'var(--teal)'},
+    {n:lyric,l:'Lyrics',col:'var(--gold)'},
+    {n:projects.length,l:'Projects'},
+    {n:linked,l:'Linked'},
+  ].map(s=>`<div class="stat-card"><div class="stat-num"${s.col?' style="color:'+s.col+'"':''}>${s.n}</div><div class="stat-label">${s.l}</div></div>`).join('');
+
+  // ideas per project
+  const projData=[
+    ...projects.map(p=>({name:p.name,color:p.color,count:ideas.filter(i=>i.project===p.id).length})),
+    {name:'Unassigned',color:'var(--text-faint)',count:ideas.filter(i=>!i.project).length}
+  ].filter(p=>p.count>0).sort((a,b)=>b.count-a.count);
+  const maxP=projData[0]?projData[0].count:1;
+  document.getElementById('ins-proj-list').innerHTML=projData.length
+    ?projData.map(p=>`<div class="insight-row"><div class="ir-name">${esc(p.name)}</div><div class="ir-bar-wrap"><div class="ir-bar" style="width:${Math.round(p.count/maxP*100)}%;background:${p.color}"></div></div><div class="ir-count">${p.count}</div></div>`).join('')
+    :'<div style="color:var(--text-faint);font-size:12px">No ideas yet.</div>';
+
+  // top tags
+  const tagCounts={};
+  ideas.forEach(i=>(i.tags||[]).forEach(t=>{tagCounts[t]=(tagCounts[t]||0)+1;}));
+  const topTags=Object.entries(tagCounts).sort((a,b)=>b[1]-a[1]).slice(0,12);
+  const maxT=topTags[0]?topTags[0][1]:1;
+  document.getElementById('ins-tag-list').innerHTML=topTags.length
+    ?topTags.map(([tag,cnt])=>`<div class="insight-row"><div class="ir-name" style="color:${tCol(tag,1)}">${esc(tag)}</div><div class="ir-bar-wrap"><div class="ir-bar" style="width:${Math.round(cnt/maxT*100)}%;background:${tCol(tag,0.6)}"></div></div><div class="ir-count">${cnt}</div></div>`).join('')
+    :'<div style="color:var(--text-faint);font-size:12px">No tags yet.</div>';
+
+  document.getElementById('insights-modal').classList.add('open');
+}
+
 // ── history modal ─────────────────────────────────────────────
 async function openHistory(){
   const hist=await api('/api/move/history');
@@ -1047,7 +1113,7 @@ document.addEventListener('keydown',function(e){
   // Escape — exit bulk mode or close topmost open modal
   if(e.key==='Escape'){
     if(ui.bulkMode){exitBulkMode();return;}
-    const modals=['edit-modal','view-modal','move-modal','project-modal','settings-modal','history-modal'];
+    const modals=['edit-modal','view-modal','move-modal','project-modal','settings-modal','insights-modal','history-modal'];
     for(const id of modals){const m=document.getElementById(id);if(m&&m.classList.contains('open')){closeModal(id);return;}}
   }
 
