@@ -460,4 +460,4 @@ if __name__ == "__main__":
     print(f"  📁  Audio  : {audio_dir()}" + ("  ✓" if audio_dir().exists() else "  ⚠️  not found — set in Settings"))
     print(f"  📁  Lyrics : {lyrics_dir()}" + ("  ✓" if lyrics_dir().exists() else "  ⚠️  not found — set in Settings"))
     print(f"\n  → http://localhost:5000\n")
-    app.run(debug=True, port=5000)
+    app.run(host="0.0.0.0", debug=True, port=5000)
