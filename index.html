@@ -441,6 +441,12 @@ header{display:flex;align-items:center;justify-content:space-between;padding:13p
           Hide YAML frontmatter in .md files
         </label>
       </div>
+      <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+        <div class="mseclabel" style="margin-bottom:5px">Maintenance</div>
+        <div style="font-size:11px;color:var(--text-faint);line-height:1.7;margin-bottom:8px">Remove ghost ideas created from playback cache files (<code style="font-size:10px;color:var(--text-dim)">.transcoded.m4a</code>) and delete those cache files from disk.</div>
+        <button class="btn sm" id="cleanup-btn" onclick="cleanupTranscoded()">⌫ Clean up transcoded cache</button>
+        <div id="cleanup-msg" style="font-size:11px;margin-top:6px"></div>
+      </div>
     </div>
     <div class="mfooter"><button class="btn sm" onclick="closeModal('settings-modal')">Cancel</button><button class="btn sm primary" onclick="savePaths()">Save Paths</button></div>
   </div>
@@ -675,6 +681,29 @@ async function runSync(){
     if(res.imported>0) toast(`↻ Imported ${res.imported} new file${res.imported!==1?'s':''}.`);
     else toast('↻ Already up to date — no new files found.');
   }catch(e){toast('Sync error: '+e.message);}
+}
+
+// ── cleanup transcoded cache ───────────────────────────────────
+async function cleanupTranscoded(){
+  const btn=document.getElementById('cleanup-btn');
+  const msg=document.getElementById('cleanup-msg');
+  btn.disabled=true;btn.textContent='Cleaning…';msg.textContent='';
+  try{
+    const res=await api('/api/cleanup/transcoded','POST');
+    db=await api('/api/data');render();
+    const n=res.removed_ideas.length, f=res.removed_files.length;
+    if(n===0&&f===0){
+      msg.style.color='var(--text-faint)';msg.textContent='Nothing to clean up.';
+    }else{
+      msg.style.color='var(--green)';
+      msg.textContent=`✓ Removed ${n} ghost idea${n!==1?'s':''} and ${f} cache file${f!==1?'s':''} from disk.`;
+    }
+    if(res.warnings&&res.warnings.length) msg.textContent+=' (some files could not be deleted)';
+  }catch(e){
+    msg.style.color='var(--crimson)';msg.textContent='Error: '+e.message;
+  }finally{
+    btn.disabled=false;btn.textContent='⌫ Clean up transcoded cache';
+  }
 }
 
 // ── view modal ────────────────────────────────────────────────

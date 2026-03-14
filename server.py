@@ -519,6 +519,47 @@ def move_history():
     hist = sorted(data.get("move_history",[]), key=lambda h:h["ts"], reverse=True)[:50]
     return jsonify(hist)
 
+# ── cleanup transcoded cache ───────────────────────────────────
+
+@app.route("/api/cleanup/transcoded", methods=["POST"])
+def cleanup_transcoded():
+    data = load_data()
+    adir = audio_dir()
+
+    removed_ideas = []
+    removed_files = []
+    warnings = []
+
+    # Remove idea entries pointing to .transcoded.m4a files
+    keep = []
+    for idea in data["ideas"]:
+        af = idea.get("audiofile") or ""
+        if af.endswith(".transcoded.m4a"):
+            removed_ideas.append(idea["id"])
+            # Remove this idea from any linked ideas
+            for other in data["ideas"]:
+                if idea["id"] in other.get("links", []):
+                    other["links"] = [l for l in other["links"] if l != idea["id"]]
+        else:
+            keep.append(idea)
+    data["ideas"] = keep
+
+    # Delete .transcoded.m4a files from disk
+    if adir.exists():
+        for p in adir.rglob("*.transcoded.m4a"):
+            try:
+                p.unlink()
+                removed_files.append(str(p.relative_to(adir)))
+            except OSError as e:
+                warnings.append(f"Could not delete {p.name}: {e}")
+
+    save_data(data)
+    return jsonify({
+        "removed_ideas": removed_ideas,
+        "removed_files": removed_files,
+        "warnings": warnings
+    })
+
 # ── serve files ───────────────────────────────────────────────
 
 @app.route("/audio/<path:filename>")
