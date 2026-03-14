@@ -17,36 +17,103 @@ CONFIG_FILE = BASE_DIR / "config.json"
 AUDIO_EXT  = {".m4a", ".mp3", ".wav", ".aiff", ".ogg", ".flac"}
 LYRICS_EXT = {".txt", ".md", ".rtf"}
 
+# RTF metadata group keywords whose entire content should be ignored
+_RTF_SKIP = frozenset([
+    'fonttbl', 'colortbl', 'stylesheet', 'pict', 'info', 'header',
+    'footer', 'footnote', 'filetbl', 'listtable', 'expandedcolortbl',
+    'themedata', 'colorschememapping', 'datastore', 'wgrffmtfilter',
+])
+
 def rtf_to_text(data):
-    """Strip RTF markup and return plain text."""
+    """Convert RTF to plain text using a state-machine parser."""
     if isinstance(data, bytes):
-        try:
-            text = data.decode('utf-8')
-        except UnicodeDecodeError:
-            text = data.decode('latin-1')
+        try:   src = data.decode('utf-8')
+        except UnicodeDecodeError: src = data.decode('latin-1')
     else:
-        text = data
-    # Paragraph / line breaks → newlines
-    text = re.sub(r'\\(par|pard|line|sect|page)\b[ \t]?', '\n', text)
-    # Tabs
-    text = re.sub(r'\\tab\b[ \t]?', '\t', text)
-    # Hex-encoded characters \'XX
-    def _hex(m):
-        try: return bytes.fromhex(m.group(1)).decode('cp1252', errors='replace')
-        except: return ''
-    text = re.sub(r"\\'([0-9a-fA-F]{2})", _hex, text)
-    # Protect escaped braces/backslash
-    text = text.replace('\\{', '\x00').replace('\\}', '\x01').replace('\\\\', '\x02')
-    # Remove nested {…} groups (up to 6 levels deep) to strip font tables, colour tables, etc.
-    for _ in range(6):
-        text = re.sub(r'\{[^{}]*\}', '', text)
-    # Strip remaining control words  \word  or  \word-N
-    text = re.sub(r'\\[a-zA-Z]+\*?\s*-?\d*[ \t]?', '', text)
-    # Strip remaining braces
-    text = re.sub(r'[{}]', '', text)
-    # Restore escaped chars
-    text = text.replace('\x00', '{').replace('\x01', '}').replace('\x02', '\\')
-    # Tidy whitespace
+        src = data
+
+    out = []
+    i = 0
+    depth = 0       # current brace nesting depth
+    skip_depth = 0  # depth at which an ignored group started (0 = not skipping)
+
+    while i < len(src):
+        c = src[i]
+
+        if c == '{':
+            depth += 1
+            i += 1
+            # Ignorable destination: {\* ...} or {\knownkeyword ...}
+            if not skip_depth:
+                if src[i:i+2] == '\\*':
+                    skip_depth = depth
+                    i += 2
+                    if i < len(src) and src[i] == ' ':
+                        i += 1
+                elif src[i] == '\\' and i + 1 < len(src) and src[i + 1].isalpha():
+                    j = i + 1
+                    while j < len(src) and src[j].isalpha():
+                        j += 1
+                    if src[i + 1:j] in _RTF_SKIP:
+                        skip_depth = depth
+
+        elif c == '}':
+            if skip_depth == depth:
+                skip_depth = 0
+            depth -= 1
+            i += 1
+
+        elif c == '\\' and i + 1 < len(src):
+            n = src[i + 1]
+            if n in ('{', '}', '\\'):          # escaped literal
+                if not skip_depth:
+                    out.append(n)
+                i += 2
+            elif n == '\n':                    # escaped newline
+                if not skip_depth:
+                    out.append('\n')
+                i += 2
+            elif n == '~':                     # non-breaking space
+                if not skip_depth:
+                    out.append('\u00a0')
+                i += 2
+            elif n == "'":                     # hex escape \'XX
+                if i + 3 < len(src):
+                    try:
+                        ch = bytes.fromhex(src[i + 2:i + 4]).decode('cp1252', errors='replace')
+                        if not skip_depth:
+                            out.append(ch)
+                    except Exception:
+                        pass
+                    i += 4
+                else:
+                    i += 2
+            elif n.isalpha():                  # control word
+                j = i + 1
+                while j < len(src) and src[j].isalpha():
+                    j += 1
+                word = src[i + 1:j]
+                if j < len(src) and src[j] == '-':
+                    j += 1
+                while j < len(src) and src[j].isdigit():
+                    j += 1
+                if j < len(src) and src[j] == ' ':
+                    j += 1
+                if not skip_depth:
+                    if word in ('par', 'pard', 'sect', 'page', 'line'):
+                        out.append('\n')
+                    elif word == 'tab':
+                        out.append('\t')
+                i = j
+            else:
+                i += 2
+
+        else:
+            if not skip_depth and c not in ('\r', '\n'):
+                out.append(c)
+            i += 1
+
+    text = ''.join(out)
     text = re.sub(r'\n{3,}', '\n\n', text)
     text = re.sub(r'[ \t]+', ' ', text)
     text = re.sub(r' *\n *', '\n', text)
