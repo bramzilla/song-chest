@@ -126,6 +126,17 @@ header{display:flex;align-items:center;justify-content:space-between;padding:13p
 .lyric-display.md-rendered .md-blank{display:block;height:.6em}
 .lyric-display.md-rendered hr{border:none;border-top:1px solid var(--border);margin:8px 0}
 .lyric-display.md-rendered strong{color:var(--text-main);font-weight:600}
+/* lyric focus mode */
+#lyric-focus.open{display:flex!important}
+#lf-read{font-family:'Fraunces',serif;font-size:17px;line-height:1.9;color:var(--text);white-space:pre-wrap}
+#lf-read.md-rendered{white-space:normal}
+#lf-read.md-rendered h1{font-family:'Fraunces',serif;font-size:22px;font-weight:600;color:var(--gold);margin:18px 0 6px}
+#lf-read.md-rendered h2{font-family:'Fraunces',serif;font-size:14px;font-weight:600;color:var(--text-dim);margin:14px 0 4px;text-transform:uppercase;letter-spacing:.5px}
+#lf-read.md-rendered h3{font-size:12px;font-weight:600;color:var(--text-faint);margin:10px 0 2px;text-transform:uppercase;letter-spacing:1px}
+#lf-read.md-rendered p{margin:0 0 4px;line-height:1.9}
+#lf-read.md-rendered .md-blank{display:block;height:.8em}
+#lf-read.md-rendered hr{border:none;border-top:1px solid var(--border);margin:14px 0}
+#lf-read.md-rendered strong{color:var(--text-main);font-weight:600}
 .apf{background:var(--bg3);border-radius:6px;padding:12px}
 .apf-top{display:flex;align-items:center;gap:10px;margin-bottom:8px}
 .play-large{width:38px;height:38px;border-radius:50%;background:var(--teal);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s}
@@ -344,6 +355,19 @@ header{display:flex;align-items:center;justify-content:space-between;padding:13p
       <button class="btn sm primary" onclick="saveNotes();closeModal('view-modal')">Done</button>
     </div>
   </div>
+</div>
+
+<!-- LYRIC FOCUS OVERLAY -->
+<div id="lyric-focus" style="display:none;position:fixed;inset:0;z-index:2000;background:var(--bg1);flex-direction:column">
+  <div id="lf-bar" style="display:flex;align-items:center;gap:10px;padding:14px 20px;border-bottom:1px solid var(--border);flex-shrink:0">
+    <div style="flex:1;min-width:0">
+      <div id="lf-title" style="font-family:'Fraunces',serif;font-size:16px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
+    </div>
+    <button class="btn sm" id="lf-mode-btn" onclick="lfToggleMode()">✎ Edit</button>
+    <button class="btn sm" onclick="closeLyricFocus()">✕ Close</button>
+  </div>
+  <div id="lf-read" style="flex:1;overflow-y:auto;padding:40px max(40px,calc(50% - 340px));box-sizing:border-box"></div>
+  <textarea id="lf-edit" style="display:none;flex:1;resize:none;background:transparent;border:none;outline:none;padding:40px max(40px,calc(50% - 340px));box-sizing:border-box;font-family:'Fraunces',serif;font-size:17px;line-height:1.9;color:var(--text);caret-color:var(--gold)"></textarea>
 </div>
 
 <!-- EDIT MODAL -->
@@ -706,6 +730,70 @@ async function cleanupTranscoded(){
   }
 }
 
+// ── lyric focus overlay ───────────────────────────────────────
+const lf={id:null,content:'',isFile:false,mode:'read',ext:''};
+
+async function openLyricFocus(id){
+  const idea=db.ideas.find(i=>i.id===id);if(!idea)return;
+  lf.id=id;lf.isFile=!!(idea.lyricfile&&!idea.content);lf.ext=(idea.lyricfile||(idea.type==='lyric'?'.md':'')).match(/\.(\w+)$/)?.[1]?.toLowerCase()||'';
+  let content=idea.content||'';
+  if(!content&&idea.lyricfile){
+    try{const r=await fetch('/lyrics-file/'+idea.lyricfile.split('/').map(encodeURIComponent).join('/'));if(r.ok)content=await r.text();}catch(e){}
+  }
+  lf.content=content;
+  lf.mode='read';
+  document.getElementById('lf-title').textContent=idea.title;
+  lfRenderRead();
+  document.getElementById('lf-edit').value=content;
+  document.getElementById('lf-mode-btn').style.display=lf.isFile?'none':'';// can only edit inline content
+  document.getElementById('lf-mode-btn').textContent='✎ Edit';
+  document.getElementById('lf-read').style.display='';
+  document.getElementById('lf-edit').style.display='none';
+  document.getElementById('lyric-focus').classList.add('open');
+}
+
+function lfRenderRead(){
+  const el=document.getElementById('lf-read');
+  const hideFm=localStorage.getItem('pref_hide_frontmatter')==='1';
+  const src=hideFm?stripFrontmatter(lf.content):lf.content;
+  if(lf.ext==='md'){
+    el.className='md-rendered';el.innerHTML=renderMarkdown(src||'—');
+  }else{
+    el.className='';el.textContent=src||'—';
+  }
+}
+
+function lfToggleMode(){
+  if(lf.mode==='read'){
+    lf.mode='edit';
+    document.getElementById('lf-read').style.display='none';
+    const ta=document.getElementById('lf-edit');ta.style.display='';ta.focus();
+    document.getElementById('lf-mode-btn').textContent='◎ Preview';
+  }else{
+    lf.mode='read';
+    lf.content=document.getElementById('lf-edit').value;
+    lfRenderRead();
+    document.getElementById('lf-read').style.display='';
+    document.getElementById('lf-edit').style.display='none';
+    document.getElementById('lf-mode-btn').textContent='✎ Edit';
+  }
+}
+
+async function closeLyricFocus(){
+  // capture latest textarea value if editing
+  if(lf.mode==='edit') lf.content=document.getElementById('lf-edit').value;
+  document.getElementById('lyric-focus').classList.remove('open');
+  if(!lf.id||lf.isFile) return;
+  const idea=db.ideas.find(i=>i.id===lf.id);
+  if(!idea||idea.content===lf.content) return;
+  idea.content=lf.content;
+  try{
+    await api('/api/ideas/'+lf.id,'PUT',{...idea});
+    // refresh view modal if still open on this idea
+    if(ui.viewingId===lf.id) viewIdea(lf.id);
+  }catch(e){toast('Could not save: '+e.message);}
+}
+
 // ── view modal ────────────────────────────────────────────────
 function viewIdea(id){
   ui.viewingId=id;const idea=db.ideas.find(i=>i.id===id);if(!idea)return;
@@ -729,7 +817,7 @@ function viewIdea(id){
       } else {
         bodyHtml=`<div class="lyric-display">${esc(content||'—')}</div>`;
       }
-      cs.innerHTML=`<div class="mseclabel">Lyrics</div>${bodyHtml}`;
+      cs.innerHTML=`<div class="mseclabel" style="display:flex;align-items:center;justify-content:space-between">Lyrics<button class="btn sm" style="font-size:10px;padding:2px 8px" onclick="openLyricFocus('${idea.id}')">⤢ Focus</button></div>${bodyHtml}`;
     };
     showLyric();
   }
@@ -1233,6 +1321,7 @@ document.addEventListener('keydown',function(e){
   // Escape — exit bulk mode or close topmost open modal
   if(e.key==='Escape'){
     if(ui.bulkMode){exitBulkMode();return;}
+    if(document.getElementById('lyric-focus').classList.contains('open')){closeLyricFocus();return;}
     const modals=['edit-modal','view-modal','move-modal','project-modal','settings-modal','insights-modal','history-modal'];
     for(const id of modals){const m=document.getElementById(id);if(m&&m.classList.contains('open')){closeModal(id);return;}}
   }
