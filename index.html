@@ -664,7 +664,13 @@ function renderCard(idea){
   const extra=(idea.tags||[]).length>3?`<span style="font-size:10px;color:var(--text-faint)">+${idea.tags.length-3}</span>`:'';
   const projTag=proj?`<span class="tag" style="background:${proj.color}22;color:${proj.color}">${esc(proj.name)}</span>`:'';
   let body='';
-  if(idea.type==='lyric'){body=`<div class="card-preview">${esc((idea.content||'').replace(/\n/g,' ↵ '))||'<span style="color:var(--text-faint);font-style:italic">no content yet</span>'}</div>`;}
+  if(idea.type==='lyric'){
+    const lyricPreview=esc((idea.content||'').replace(/\n/g,' ↵ '));
+    const lyricFallback=idea.lyricfile
+      ?`<span style="color:var(--text-faint);font-style:italic">📄 ${esc(idea.lyricfile.split('/').pop())}</span>`
+      :`<span style="color:var(--text-faint);font-style:italic">no content yet</span>`;
+    body=`<div class="card-preview">${lyricPreview||lyricFallback}</div>`;
+  }
   else{const bars=Array.from({length:22},(_,i)=>`<div class="w-bar" style="height:${3+prand(idea.id+i)*18}px"></div>`).join('');body=`<div class="waveform">${bars}</div>`;}
   const audioRow=idea.type==='audio'?`<div class="card-audio-row"><button class="play-mini" id="pb-${idea.id}" onclick="togglePlay('${idea.id}',event)"><svg viewBox="0 0 10 12"><polygon points="0,0 10,6 0,12"/></svg></button><div class="audio-prog" onclick="seekAudio(event,'${idea.id}')"><div class="audio-prog-fill" id="pf-${idea.id}"></div></div><span class="audio-time" id="pt-${idea.id}">—</span></div>`:'';
   return `<div class="idea-card${linked?' linked-hl':''}${isRaw?' raw':''} fi" id="card-${idea.id}" onclick="cardClick('${idea.id}')">
@@ -682,7 +688,8 @@ function renderListItem(idea){
   const linked=(idea.links||[]).length>0;
   const isRaw=idea.auto_imported&&!(idea.tags||[]).length&&!idea.notes;
   const fileRef=idea.type==='lyric'?(idea.lyricfile||''):( idea.audiofile||'');
-  const preview=idea.type==='lyric'?esc((idea.content||'').replace(/\n/g,' · ').slice(0,80))||(fileRef?esc(fileRef):'no content yet'):esc(idea.audiofile||'no file');
+  const lyricFilename=fileRef?fileRef.split('/').pop():'';
+  const preview=idea.type==='lyric'?esc((idea.content||'').replace(/\n/g,' · ').slice(0,80))||(lyricFilename?`📄 ${esc(lyricFilename)}`:'no content yet'):esc(idea.audiofile||'no file');
   const tagHtml=(idea.tags||[]).slice(0,3).map(t=>`<span class="tag" style="background:${tCol(t,.12)};color:${tCol(t,1)}">${esc(t)}</span>`).join('');
   return `<div class="list-item${linked?' linked-hl':''}${isRaw?' raw':''} fi" id="li-${idea.id}" onclick="cardClick('${idea.id}')">
     <div class="list-dot" style="background:${idea.type==='lyric'?'var(--gold)':'var(--teal)'}"></div>
