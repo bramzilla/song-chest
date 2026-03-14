@@ -17,6 +17,41 @@ CONFIG_FILE = BASE_DIR / "config.json"
 AUDIO_EXT  = {".m4a", ".mp3", ".wav", ".aiff", ".ogg", ".flac"}
 LYRICS_EXT = {".txt", ".md", ".rtf"}
 
+def rtf_to_text(data):
+    """Strip RTF markup and return plain text."""
+    if isinstance(data, bytes):
+        try:
+            text = data.decode('utf-8')
+        except UnicodeDecodeError:
+            text = data.decode('latin-1')
+    else:
+        text = data
+    # Paragraph / line breaks → newlines
+    text = re.sub(r'\\(par|pard|line|sect|page)\b[ \t]?', '\n', text)
+    # Tabs
+    text = re.sub(r'\\tab\b[ \t]?', '\t', text)
+    # Hex-encoded characters \'XX
+    def _hex(m):
+        try: return bytes.fromhex(m.group(1)).decode('cp1252', errors='replace')
+        except: return ''
+    text = re.sub(r"\\'([0-9a-fA-F]{2})", _hex, text)
+    # Protect escaped braces/backslash
+    text = text.replace('\\{', '\x00').replace('\\}', '\x01').replace('\\\\', '\x02')
+    # Remove nested {…} groups (up to 6 levels deep) to strip font tables, colour tables, etc.
+    for _ in range(6):
+        text = re.sub(r'\{[^{}]*\}', '', text)
+    # Strip remaining control words  \word  or  \word-N
+    text = re.sub(r'\\[a-zA-Z]+\*?\s*-?\d*[ \t]?', '', text)
+    # Strip remaining braces
+    text = re.sub(r'[{}]', '', text)
+    # Restore escaped chars
+    text = text.replace('\x00', '{').replace('\x01', '}').replace('\x02', '\\')
+    # Tidy whitespace
+    text = re.sub(r'\n{3,}', '\n\n', text)
+    text = re.sub(r'[ \t]+', ' ', text)
+    text = re.sub(r' *\n *', '\n', text)
+    return text.strip()
+
 # ── config ────────────────────────────────────────────────────
 
 def load_config():
@@ -474,6 +509,9 @@ def serve_lyric_file(filename):
     except ValueError:
         abort(403)
     if not full.exists(): abort(404)
+    if full.suffix.lower() == '.rtf':
+        plain = rtf_to_text(full.read_bytes())
+        return plain, 200, {'Content-Type': 'text/plain; charset=utf-8'}
     return send_from_directory(str(lyrics_dir()), filename)
 
 @app.route("/")
