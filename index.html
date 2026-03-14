@@ -650,7 +650,7 @@ function renderGroupedGrid(ideas){
   fkeys.forEach(folder=>{
     const proj=db.projects.find(p=>p.folder===folder);
     const color=proj?proj.color:'var(--text-faint)';
-    html+=`<div class="folder-group fi"><div class="folder-header" style="border-left-color:${color}"><span>📁</span><span class="folder-title">${esc(folder)}</span><span class="folder-sub">${groups[folder].length} idea${groups[folder].length!==1?'s':''}</span></div><div class="cards-grid">${groups[folder].map(renderCard).join('')}</div></div>`;
+    html+=`<div class="folder-group fi"><div class="folder-header" style="border-left-color:${color}"><span>📁</span><span class="folder-title">${esc(proj?.name||folder)}</span><span class="folder-sub">${groups[folder].length} idea${groups[folder].length!==1?'s':''}</span></div><div class="cards-grid">${groups[folder].map(renderCard).join('')}</div></div>`;
   });
   if(groups['__none__']?.length){if(fkeys.length)html+=`<div class="sdiv fi">Not in a folder</div>`;html+=`<div class="cards-grid">${groups['__none__'].map(renderCard).join('')}</div>`;}
   return html;
