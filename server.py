@@ -109,7 +109,7 @@ def scan_files():
                               ("lyrics", lyrics_dir(), LYRICS_EXT)]:
         if root.exists():
             for p in sorted(root.rglob("*")):
-                if p.suffix.lower() in exts:
+                if p.suffix.lower() in exts and not p.name.endswith('.transcoded.m4a'):
                     rel   = str(p.relative_to(root))
                     parts = Path(rel).parts
                     result[kind].append({
