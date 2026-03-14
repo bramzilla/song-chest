@@ -749,6 +749,8 @@ async function openLyricFocus(id){
   document.getElementById('lf-mode-btn').textContent='✎ Edit';
   document.getElementById('lf-read').style.display='';
   document.getElementById('lf-edit').style.display='none';
+  // close any open modal so focus overlay has a clean stage
+  document.querySelectorAll('.modal-overlay.open').forEach(m=>m.classList.remove('open'));
   document.getElementById('lyric-focus').classList.add('open');
 }
 
@@ -783,14 +785,16 @@ async function closeLyricFocus(){
   // capture latest textarea value if editing
   if(lf.mode==='edit') lf.content=document.getElementById('lf-edit').value;
   document.getElementById('lyric-focus').classList.remove('open');
-  if(!lf.id||lf.isFile) return;
+  if(!lf.id) return;
+  // reopen view modal for this idea
+  viewIdea(lf.id);
+  if(lf.isFile) return;
   const idea=db.ideas.find(i=>i.id===lf.id);
   if(!idea||idea.content===lf.content) return;
   idea.content=lf.content;
   try{
     await api('/api/ideas/'+lf.id,'PUT',{...idea});
-    // refresh view modal if still open on this idea
-    if(ui.viewingId===lf.id) viewIdea(lf.id);
+    viewIdea(lf.id);// refresh with saved content
   }catch(e){toast('Could not save: '+e.message);}
 }
 
