@@ -530,6 +530,8 @@ header{display:flex;align-items:center;justify-content:space-between;padding:13p
   <div class="modal wide">
     <div class="mhdr"><div style="flex:1"><div class="mtitle">Move History</div></div><button class="close-btn" onclick="closeModal('history-modal')">✕</button></div>
     <div class="mbody">
+      <div id="hist-pending"></div>
+      <div id="hist-log-label" class="mseclabel" style="margin-bottom:8px;display:none">Move Log</div>
       <div style="font-size:11px;color:var(--text-faint);margin-bottom:11px">Every file move is recorded here. Undo restores files to their original location.</div>
       <div class="hist-list" id="hist-list"></div>
     </div>
@@ -1248,11 +1250,59 @@ function openInsights(){
 
 // ── history modal ─────────────────────────────────────────────
 async function openHistory(){
+  // ── Pending: ideas assigned to a project but files not yet in that folder ──
+  const pendingEl=document.getElementById('hist-pending');
+  const logLabel=document.getElementById('hist-log-label');
+  const pending=db.ideas.filter(idea=>{
+    if(!idea.project)return false;
+    const proj=db.projects.find(p=>p.id===idea.project);
+    if(!proj)return false;
+    const f=proj.folder+'/';
+    return (idea.audiofile&&!idea.audiofile.startsWith(f))||(idea.lyricfile&&!idea.lyricfile.startsWith(f));
+  });
+  if(pending.length){
+    let html=`<div class="mseclabel" style="margin-bottom:8px">Pending File Moves</div>`;
+    html+=`<div style="font-size:11px;color:var(--text-faint);margin-bottom:10px">These ideas are assigned to a project but their files haven't been moved to the project folder yet.</div>`;
+    html+=`<div class="hist-list" style="margin-bottom:16px">`;
+    pending.forEach(idea=>{
+      const proj=db.projects.find(p=>p.id===idea.project);
+      const files=[];
+      if(idea.audiofile&&!idea.audiofile.startsWith(proj.folder+'/'))files.push(idea.audiofile);
+      if(idea.lyricfile&&!idea.lyricfile.startsWith(proj.folder+'/'))files.push(idea.lyricfile);
+      html+=`<div class="hist-item"><div style="flex:1"><div class="hist-title">${esc(idea.title||'Untitled')}</div><div class="hist-meta">→ ${esc(proj.name)} · ${files.map(f=>`<code style="font-size:10px">${esc(f.split('/').pop())}</code>`).join(', ')}</div></div><button class="btn sm primary" onclick="applyPendingMove('${idea.id}')">Apply</button></div>`;
+    });
+    html+=`</div>`;
+    pendingEl.innerHTML=html;
+    logLabel.style.display='';
+  } else {
+    pendingEl.innerHTML='';
+    logLabel.style.display='none';
+  }
+
+  // ── History log ──
   const hist=await api('/api/move/history');
   const list=document.getElementById('hist-list');
   if(!hist.length){list.innerHTML='<div style="color:var(--text-faint);font-size:12px">No moves recorded yet.</div>';}
   else{list.innerHTML=hist.map(h=>{const fp=h.from_project?db.projects.find(p=>p.id===h.from_project):null;const tp=h.to_project?db.projects.find(p=>p.id===h.to_project):null;return`<div class="hist-item${h.undone?' undone':''}"><div style="flex:1"><div class="hist-title">${esc(h.idea_title)}</div><div class="hist-meta">${esc(fp?fp.name:'root')} → ${esc(tp?tp.name:'root')} · ${new Date(h.ts).toLocaleString()} · ${h.moves.length} file(s)</div></div>${h.undone?'<span style="font-size:11px;color:var(--text-faint)">undone</span>':`<button class="btn sm teal" onclick="undoMove('${h.id}')">Undo</button>`}</div>`;}).join('');}
   document.getElementById('history-modal').classList.add('open');
+}
+
+async function applyPendingMove(ideaId){
+  const idea=db.ideas.find(i=>i.id===ideaId);
+  if(!idea)return;
+  try{
+    const preview=await api('/api/move/preview','POST',{idea_id:ideaId,target_project_id:idea.project});
+    if(!preview.moves.length){toast('Files are already in the right location.');await loadAll();openHistory();return;}
+    await api('/api/move/execute','POST',{
+      idea_id:ideaId,
+      target_project_id:idea.project,
+      from_project_id:idea.project,
+      moves:preview.moves
+    });
+    await loadAll();
+    toast('Files moved.');
+    openHistory();
+  }catch(e){toast('Error: '+e.message);}
 }
 
 async function undoMove(hid){
