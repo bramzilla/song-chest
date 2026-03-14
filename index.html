@@ -417,6 +417,13 @@ header{display:flex;align-items:center;justify-content:space-between;padding:13p
         <button class="btn sm primary" onclick="createAndSelectProject()">Create</button>
         <button class="btn sm" onclick="hideMoveNewProj()">Cancel</button>
       </div>
+      <div id="move-file-section" style="display:none;margin-top:14px;border-top:1px solid var(--border);padding-top:12px">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--text-dim)">
+          <input type="checkbox" id="move-file-toggle" onchange="updateMovePreview()">
+          Also move files to project folder on disk
+        </label>
+        <div id="move-preview-area" style="margin-top:10px"></div>
+      </div>
     </div>
     <div class="mfooter"><button class="btn sm" onclick="closeModal('move-modal')">Cancel</button><button class="btn sm primary" id="move-confirm-btn" onclick="executeMove()" disabled>Assign</button></div>
   </div>
@@ -553,7 +560,7 @@ let files={audio:[],lyrics:[]};
 let ui={view:'grid',pf:'all',tf:'all',tag:null,search:'',sort:'newest',
         viewingId:null,editingId:null,eType:'lyric',eTags:[],eLinks:[],eSelAudio:'',eSelLyric:'',
         pType:'EP',pColor:COLORS[0],audioEl:null,playingId:null,
-        moveIdeaId:null,moveTargetPid:undefined,
+        moveIdeaId:null,moveTargetPid:undefined,movePreview:null,
         pendingPaths:{audio:'',lyrics:''},
         bulkMode:false,selected:new Set()};
 
@@ -855,7 +862,11 @@ async function deleteIdea(){if(!ui.viewingId||!confirm('Delete this idea?'))retu
 function openMoveModal(){
   ui.moveIdeaId=ui.viewingId;
   ui.moveTargetPid=undefined; // undefined = nothing selected yet
+  ui.movePreview=null;
   document.getElementById('move-new-proj-row').style.display='none';
+  document.getElementById('move-file-section').style.display='none';
+  document.getElementById('move-file-toggle').checked=false;
+  document.getElementById('move-preview-area').innerHTML='';
   document.getElementById('move-confirm-btn').disabled=true;
   renderMoveFolderGrid();
   document.getElementById('move-modal').classList.add('open');
@@ -908,6 +919,18 @@ function selectMoveTarget(pid){
   });
   // Enable only if selection differs from current
   document.getElementById('move-confirm-btn').disabled=((pid||null)===currentPid);
+  // Show file move toggle only if idea has files and a real project is selected
+  const hasFiles=!!(idea?.audiofile||idea?.lyricfile);
+  const fileSec=document.getElementById('move-file-section');
+  const fileToggle=document.getElementById('move-file-toggle');
+  if(hasFiles&&pid){
+    fileSec.style.display='';
+  } else {
+    fileSec.style.display='none';
+    fileToggle.checked=false;
+    document.getElementById('move-preview-area').innerHTML='';
+    ui.movePreview=null;
+  }
 }
 
 function showMoveNewProj(){
@@ -919,6 +942,28 @@ function showMoveNewProj(){
 
 function hideMoveNewProj(){
   document.getElementById('move-new-proj-row').style.display='none';
+}
+
+async function updateMovePreview(){
+  const toggle=document.getElementById('move-file-toggle');
+  const area=document.getElementById('move-preview-area');
+  if(!toggle.checked){area.innerHTML='';ui.movePreview=null;return;}
+  area.innerHTML='<span style="color:var(--text-faint);font-size:11px">Loading preview…</span>';
+  try{
+    const res=await api('/api/move/preview','POST',{idea_id:ui.moveIdeaId,target_project_id:ui.moveTargetPid||null});
+    ui.movePreview=res;
+    if(!res.moves.length){
+      area.innerHTML='<span style="color:var(--text-faint);font-size:11px">Files are already in the right location.</span>';
+      return;
+    }
+    let html='<table class="move-tbl"><thead><tr><th>File</th><th>From</th><th>To</th></tr></thead><tbody>';
+    res.moves.forEach(m=>{
+      const warn=m.collision?`<span style="color:var(--color-crimson)"> ⚠ already exists</span>`:'';
+      html+=`<tr><td class="fname">${esc(m.file)}${warn}</td><td class="path">${esc(m.from)}</td><td class="path">${esc(m.to)}</td></tr>`;
+    });
+    html+='</tbody></table>';
+    area.innerHTML=html;
+  }catch(e){area.innerHTML=`<span style="color:var(--color-crimson);font-size:11px">Preview failed: ${esc(e.message)}</span>`;ui.movePreview=null;}
 }
 
 async function createAndSelectProject(){
@@ -939,9 +984,21 @@ async function executeMove(){
   const idea=db.ideas.find(i=>i.id===ui.moveIdeaId);
   if(!idea||ui.moveTargetPid===undefined)return;
   document.getElementById('move-confirm-btn').disabled=true;
+  const projId=ui.moveTargetPid||null;
+  const fileToggle=document.getElementById('move-file-toggle');
   try{
-    const projId=ui.moveTargetPid||null;
-    await api(`/api/ideas/${ui.moveIdeaId}`,'PUT',{...idea,project:projId});
+    if(fileToggle.checked&&ui.movePreview?.moves?.length){
+      // Physical file move + project assignment — logged to history
+      await api('/api/move/execute','POST',{
+        idea_id:ui.moveIdeaId,
+        target_project_id:projId,
+        from_project_id:idea.project||null,
+        moves:ui.movePreview.moves
+      });
+    } else {
+      // Metadata-only: just update the project field, no file movement
+      await api(`/api/ideas/${ui.moveIdeaId}`,'PUT',{...idea,project:projId});
+    }
     await loadAll();
     const projName=db.projects.find(p=>p.id===projId)?.name;
     closeModal('move-modal');
