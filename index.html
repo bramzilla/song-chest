@@ -118,6 +118,14 @@ header{display:flex;align-items:center;justify-content:space-between;padding:13p
 .msec{margin-bottom:15px}
 .mseclabel{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text-faint);margin-bottom:6px}
 .lyric-display{background:var(--bg3);border-radius:6px;padding:12px;font-family:'Fraunces',serif;font-style:italic;line-height:1.85;color:var(--text);font-size:13px;white-space:pre-wrap;max-height:210px;overflow-y:auto}
+.lyric-display.md-rendered{white-space:normal;font-style:normal}
+.lyric-display.md-rendered h1{font-family:'Fraunces',serif;font-size:15px;font-weight:600;color:var(--gold);margin:10px 0 4px;font-style:normal}
+.lyric-display.md-rendered h2{font-family:'Fraunces',serif;font-size:12px;font-weight:600;color:var(--text-dim);margin:8px 0 2px;font-style:normal;text-transform:uppercase;letter-spacing:.5px}
+.lyric-display.md-rendered h3{font-size:11px;font-weight:600;color:var(--text-faint);margin:6px 0 2px;font-style:normal;text-transform:uppercase;letter-spacing:1px}
+.lyric-display.md-rendered p{margin:0 0 2px;line-height:1.85}
+.lyric-display.md-rendered .md-blank{display:block;height:.6em}
+.lyric-display.md-rendered hr{border:none;border-top:1px solid var(--border);margin:8px 0}
+.lyric-display.md-rendered strong{color:var(--text-main);font-weight:600}
 .apf{background:var(--bg3);border-radius:6px;padding:12px}
 .apf-top{display:flex;align-items:center;gap:10px;margin-bottom:8px}
 .play-large{width:38px;height:38px;border-radius:50%;background:var(--teal);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s}
@@ -426,6 +434,13 @@ header{display:flex;align-items:center;justify-content:space-between;padding:13p
         </div>
         <button class="btn sm" onclick="downloadExport()">⬇ Download backup.zip</button>
       </div>
+      <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+        <div class="mseclabel" style="margin-bottom:8px">Lyrics Display</div>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--text-dim)">
+          <input type="checkbox" id="pref-hide-fm" style="accent-color:var(--gold)" onchange="savePref('pref_hide_frontmatter',this.checked)">
+          Hide YAML frontmatter in .md files
+        </label>
+      </div>
     </div>
     <div class="mfooter"><button class="btn sm" onclick="closeModal('settings-modal')">Cancel</button><button class="btn sm primary" onclick="savePaths()">Save Paths</button></div>
   </div>
@@ -673,10 +688,19 @@ function viewIdea(id){
   if(idea.type==='lyric'){
     const showLyric = async () => {
       let content = idea.content || '';
+      const ext = idea.lyricfile ? (idea.lyricfile.match(/\.(\w+)$/)||['',''])[1].toLowerCase() : '';
       if(!content && idea.lyricfile){
         try{ const r=await fetch('/lyrics-file/'+idea.lyricfile.split('/').map(encodeURIComponent).join('/')); if(r.ok) content=await r.text(); }catch(e){}
       }
-      cs.innerHTML=`<div class="mseclabel">Lyrics</div><div class="lyric-display">${esc(content||'—')}</div>`;
+      let bodyHtml;
+      if(ext==='md'){
+        const hideFm=localStorage.getItem('pref_hide_frontmatter')==='1';
+        const src=hideFm?stripFrontmatter(content):content;
+        bodyHtml=`<div class="lyric-display md-rendered">${renderMarkdown(src||'—')}</div>`;
+      } else {
+        bodyHtml=`<div class="lyric-display">${esc(content||'—')}</div>`;
+      }
+      cs.innerHTML=`<div class="mseclabel">Lyrics</div>${bodyHtml}`;
     };
     showLyric();
   }
@@ -930,6 +954,7 @@ function openSettings(){
   document.getElementById('s-audio-input').value=cfg.audio_folder||'';
   document.getElementById('s-lyrics-input').value=cfg.lyrics_folder||'';
   document.getElementById('s-msg').textContent='';
+  document.getElementById('pref-hide-fm').checked=localStorage.getItem('pref_hide_frontmatter')==='1';
   document.getElementById('settings-modal').classList.add('open');
 }
 
@@ -1064,6 +1089,33 @@ function setSort(v){ui.sort=v;render();}
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');}));
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function stripFrontmatter(text){return text.replace(/^---[\r\n][\s\S]*?[\r\n]---[\r\n]?/,'').replace(/^\s+/,'');}
+function mdInline(text){
+  text=text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  text=text.replace(/\*\*\*(.*?)\*\*\*/g,'<strong><em>$1</em></strong>');
+  text=text.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>');
+  text=text.replace(/\*(.*?)\*/g,'<em>$1</em>');
+  text=text.replace(/__(.*?)__/g,'<strong>$1</strong>');
+  text=text.replace(/_(.*?)_/g,'<em>$1</em>');
+  return text;
+}
+function renderMarkdown(text){
+  const lines=text.split('\n');
+  let html='';let inP=false;
+  const closeP=()=>{if(inP){html+='</p>';inP=false;}};
+  for(const raw of lines){
+    const line=raw;
+    if(/^# /.test(line)){closeP();html+=`<h1>${mdInline(line.slice(2))}</h1>`;}
+    else if(/^## /.test(line)){closeP();html+=`<h2>${mdInline(line.slice(3))}</h2>`;}
+    else if(/^### /.test(line)){closeP();html+=`<h3>${mdInline(line.slice(4))}</h3>`;}
+    else if(/^---+$/.test(line.trim())){closeP();html+='<hr>';}
+    else if(line.trim()===''){closeP();html+='<span class="md-blank"></span>';}
+    else{if(!inP){html+='<p>';inP=true;}else html+='<br>';html+=mdInline(line);}
+  }
+  closeP();
+  return html;
+}
+function savePref(key,val){localStorage.setItem(key,val?'1':'0');}
 function tCol(tag,alpha){let h=0;for(const c of tag)h=(h*31+c.charCodeAt(0))&0xffffffff;const p=[[218,165,32],[201,40,29],[99,182,207],[124,182,124],[182,106,182],[207,142,78],[91,141,217],[217,136,91],[110,184,168]];const[r,g,b]=p[Math.abs(h)%p.length];return`rgba(${r},${g},${b},${alpha})`;}
 function prand(seed){let h=0;for(const c of String(seed))h=(h*31+c.charCodeAt(0))&0x7fffffff;return(h%100)/100;}
 function relDate(ts){const d=Date.now()-ts,m=Math.floor(d/60000);if(m<60)return m<=1?'just now':m+'m ago';const hr=Math.floor(m/60);if(hr<24)return hr+'h ago';const dy=Math.floor(hr/24);if(dy<7)return dy+'d ago';return new Date(ts).toLocaleDateString('en-GB',{day:'numeric',month:'short'});}
