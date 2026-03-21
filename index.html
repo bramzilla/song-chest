@@ -667,6 +667,13 @@ async function loadAll(){
   [db,cfg,files]=await Promise.all([api('/api/data'),api('/api/config'),api('/api/scan')]);
   obsNotes=null; // vault may have changed since last scan
   render();
+  // Pre-fetch note count in background so the sidebar badge is populated on load
+  if(cfg.integrations?.obsidian?.enabled){
+    ensureObsNotes().then(notes=>{
+      const el=document.getElementById('cnt-obsidian');
+      if(el)el.textContent=notes.length;
+    });
+  }
 }
 
 // ── audio ─────────────────────────────────────────────────────
