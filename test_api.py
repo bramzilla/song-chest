@@ -16,7 +16,11 @@ def req(method, path, body=None):
                                 headers={"Content-Type":"application/json"})
     try:
         with urllib.request.urlopen(r) as resp:
-            return resp.status, json.loads(resp.read())
+            raw = resp.read()
+            try:
+                return resp.status, json.loads(raw)
+            except Exception:
+                return resp.status, {}
     except urllib.error.HTTPError as e:
         return e.code, {}
 

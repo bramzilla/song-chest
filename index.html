@@ -845,6 +845,7 @@ function openPlayingIdea(){if(ui.playingId){closeModal('view-modal');viewIdea(ui
 // ── quick capture ─────────────────────────────────────────────
 let qcType='lyric';
 function openQuickCapture(){
+  if(document.querySelector('.modal-overlay.open')) return;
   qcType='lyric';
   document.getElementById('qc-lyric').className='type-opt sl';
   document.getElementById('qc-audio').className='type-opt';
@@ -1870,7 +1871,7 @@ async function unlinkObsNote(ideaId,noteId){
 }
 
 // ── insights modal ────────────────────────────────────────────
-function openInsights(){
+async function openInsights(){
   const ideas=db.ideas, projects=db.projects;
   const audio=ideas.filter(i=>i.type==='audio').length;
   const lyric=ideas.filter(i=>i.type==='lyric').length;
@@ -1905,7 +1906,7 @@ function openInsights(){
     :'<div style="color:var(--text-faint);font-size:12px">No tags yet.</div>';
 
   // activity + trash
-  renderActivityTile();
+  await renderActivityTile();
   renderTrashTile();
 
   document.getElementById('insights-modal').classList.add('open');

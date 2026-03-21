@@ -135,6 +135,7 @@ def load_config():
         "audio_folder":  str(BASE_DIR / "audio"),
         "lyrics_folder": str(BASE_DIR / "lyrics"),
         "integrations": {"obsidian": obs_default},
+        "preferences": {},
     }
     if CONFIG_FILE.exists():
         with open(CONFIG_FILE, "r", encoding="utf-8") as f:
@@ -160,8 +161,10 @@ def load_config():
     return defaults
 
 def save_config(cfg):
-    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+    tmp = CONFIG_FILE.with_suffix(".tmp")
+    with open(tmp, "w", encoding="utf-8") as f:
         json.dump(cfg, f, indent=2)
+    tmp.replace(CONFIG_FILE)
 
 CONFIG = load_config()
 def audio_dir():  return Path(CONFIG["audio_folder"])
@@ -653,7 +656,7 @@ def update_idea(iid):
 def delete_idea(iid):
     data = load_data()
     idea = next((x for x in data["ideas"] if x["id"] == iid), None)
-    if not idea: abort(404)
+    if not idea: return jsonify({"ok": True})  # already gone — idempotent
     # Soft-delete: remove from ideas, sever links, move to trash
     data["ideas"] = [x for x in data["ideas"] if x["id"] != iid]
     for other in data["ideas"]: other["links"] = [l for l in other["links"] if l != iid]
@@ -807,9 +810,12 @@ def undo_move(hid):
         shutil.move(str(src), str(dest))
         if m["kind"]=="audio":  idea["audiofile"] = m["from"]
         else:                   idea["lyricfile"]  = m["from"]
+    proj_names = {p["id"]: p["name"] for p in data.get("projects",[])}
+    dest = proj_names.get(entry.get("from_project"), "Unassigned") if entry.get("from_project") else "Unassigned"
     idea["project"] = entry.get("from_project")
     idea["updated"] = now_ms()
     entry["undone"] = True
+    append_activity(data, "moved", idea, dest + " (undone)")
     save_data(data)
     return jsonify({"ok":True,"warnings":warnings,"idea":idea})
 
