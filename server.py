@@ -4,15 +4,31 @@ Run: ./start.sh  or  python server.py
 Open: http://localhost:5000
 """
 
-import json, os, shutil, uuid, time, re, hashlib, urllib.parse
+import sys, json, os, shutil, uuid, time, re, hashlib, urllib.parse
 from pathlib import Path
 from flask import Flask, jsonify, request, send_from_directory, send_file, abort
 
-app = Flask(__name__, static_folder=".")
+APP_VERSION = "0.9.0"
 
-BASE_DIR    = Path(__file__).parent
-DATA_FILE   = BASE_DIR / "data.json"
-CONFIG_FILE = BASE_DIR / "config.json"
+# ── Path setup ────────────────────────────────────────────────
+# When running as a PyInstaller .app bundle:
+#   - RESOURCES_DIR  points to the extracted bundle (contains index.html)
+#   - DATA_DIR       points to ~/Library/Application Support/SongChest/
+#                    (writable; persists across app updates)
+# When running from source both dirs are the project root.
+if getattr(sys, "frozen", False):
+    RESOURCES_DIR = Path(sys._MEIPASS)
+    DATA_DIR      = Path.home() / "Library" / "Application Support" / "SongChest"
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+else:
+    RESOURCES_DIR = Path(__file__).parent
+    DATA_DIR      = Path(__file__).parent
+
+BASE_DIR    = DATA_DIR   # kept so existing code using BASE_DIR still works
+DATA_FILE   = DATA_DIR  / "data.json"
+CONFIG_FILE = DATA_DIR  / "config.json"
+
+app = Flask(__name__, static_folder=str(RESOURCES_DIR))
 
 AUDIO_EXT  = {".m4a", ".mp3", ".wav", ".aiff", ".ogg", ".flac"}
 LYRICS_EXT = {".txt", ".md", ".rtf"}
@@ -133,6 +149,7 @@ def load_config():
         "audio_folder":  str(BASE_DIR / "audio"),
         "lyrics_folder": str(BASE_DIR / "lyrics"),
         "integrations": {"obsidian": obs_default},
+        "preferences": {},
     }
     if CONFIG_FILE.exists():
         with open(CONFIG_FILE, "r", encoding="utf-8") as f:
@@ -158,8 +175,10 @@ def load_config():
     return defaults
 
 def save_config(cfg):
-    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+    tmp = CONFIG_FILE.with_suffix(".tmp")
+    with open(tmp, "w", encoding="utf-8") as f:
         json.dump(cfg, f, indent=2)
+    tmp.replace(CONFIG_FILE)
 
 CONFIG = load_config()
 def audio_dir():  return Path(CONFIG["audio_folder"])
@@ -300,7 +319,8 @@ def sync_files(data):
 def get_config():
     return jsonify({**CONFIG,
                     "audio_exists":  audio_dir().exists(),
-                    "lyrics_exists": lyrics_dir().exists()})
+                    "lyrics_exists": lyrics_dir().exists(),
+                    "version":       APP_VERSION})
 
 @app.route("/api/config", methods=["POST"])
 def update_config():
@@ -650,7 +670,7 @@ def update_idea(iid):
 def delete_idea(iid):
     data = load_data()
     idea = next((x for x in data["ideas"] if x["id"] == iid), None)
-    if not idea: abort(404)
+    if not idea: return jsonify({"ok": True})  # already gone — idempotent
     # Soft-delete: remove from ideas, sever links, move to trash
     data["ideas"] = [x for x in data["ideas"] if x["id"] != iid]
     for other in data["ideas"]: other["links"] = [l for l in other["links"] if l != iid]
@@ -804,9 +824,12 @@ def undo_move(hid):
         shutil.move(str(src), str(dest))
         if m["kind"]=="audio":  idea["audiofile"] = m["from"]
         else:                   idea["lyricfile"]  = m["from"]
+    proj_names = {p["id"]: p["name"] for p in data.get("projects",[])}
+    dest = proj_names.get(entry.get("from_project"), "Unassigned") if entry.get("from_project") else "Unassigned"
     idea["project"] = entry.get("from_project")
     idea["updated"] = now_ms()
     entry["undone"] = True
+    append_activity(data, "moved", idea, dest + " (undone)")
     save_data(data)
     return jsonify({"ok":True,"warnings":warnings,"idea":idea})
 
@@ -946,7 +969,7 @@ def serve_lyric_file(filename):
 
 @app.route("/")
 def index():
-    return send_from_directory(BASE_DIR, "index.html")
+    return send_from_directory(str(RESOURCES_DIR), "index.html")
 
 if __name__ == "__main__":
     print(f"\n  🎵  Song Chest")

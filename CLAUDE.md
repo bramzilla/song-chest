@@ -4,6 +4,29 @@ This file describes the codebase structure, conventions, and development workflo
 
 ---
 
+## Current Version
+
+**v0.9.0** — feature-complete for core use. Packaging as installable `.app` will mark 1.0.0.
+
+### Versioning rules
+- `APP_VERSION` in `server.py` is the canonical source of truth
+- Also update this section in CLAUDE.md and the badge in README.md on every release
+- Tag the git release: `git tag v0.9.0 && git push --tags`
+
+| Bump | When |
+|------|------|
+| **Patch** (`0.9.1`) | Bug fixes only, no new features |
+| **Minor** (`0.10.0`) | New features added |
+| **Major** (`1.0.0`) | First installable packaged release; or fundamental data model change |
+
+### Release checklist
+1. Update `APP_VERSION` in `server.py`
+2. Update the version in this CLAUDE.md section
+3. Update README.md version badge
+4. Commit → merge to main → `git tag vX.Y.Z && git push --tags`
+
+---
+
 ## Project Overview
 
 **Song Chest** is a local-first web application for musicians to organize their song ideas, lyrics, and audio recordings. It is a minimal, dependency-light stack: a Python/Flask backend serving a single-page HTML/CSS/JS frontend, with JSON as the only data store.

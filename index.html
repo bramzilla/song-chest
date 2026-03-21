@@ -654,7 +654,10 @@ header{display:flex;align-items:center;justify-content:space-between;padding:13p
         <div id="obs-status" class="obs-status" style="display:none"></div>
       </div>
     </div>
-    <div class="mfooter"><button class="btn sm primary" onclick="closeModal('settings-modal')">Done</button></div>
+    <div class="mfooter" style="justify-content:space-between;align-items:center">
+      <span style="font-size:10px;color:var(--text-faint);letter-spacing:.5px">Song Chest <span id="settings-version"></span></span>
+      <button class="btn sm primary" onclick="closeModal('settings-modal')">Done</button>
+    </div>
   </div>
 </div>
 
@@ -842,6 +845,7 @@ function openPlayingIdea(){if(ui.playingId){closeModal('view-modal');viewIdea(ui
 // ── quick capture ─────────────────────────────────────────────
 let qcType='lyric';
 function openQuickCapture(){
+  if(document.querySelector('.modal-overlay.open')) return;
   qcType='lyric';
   document.getElementById('qc-lyric').className='type-opt sl';
   document.getElementById('qc-audio').className='type-opt';
@@ -1562,6 +1566,9 @@ function openSettings(){
   document.getElementById('s-audio-input').value=cfg.audio_folder||'';
   document.getElementById('s-lyrics-input').value=cfg.lyrics_folder||'';
   document.getElementById('s-msg').textContent='';
+  const vEl=document.getElementById('settings-version');
+  if(vEl) vEl.textContent=cfg.version?`v${cfg.version}`:'';
+
   document.getElementById('pref-hide-fm').checked=!!(cfg.preferences?.hide_frontmatter);
   // Theme
   const currentTheme=cfg.preferences?.theme||'default';
@@ -1864,7 +1871,7 @@ async function unlinkObsNote(ideaId,noteId){
 }
 
 // ── insights modal ────────────────────────────────────────────
-function openInsights(){
+async function openInsights(){
   const ideas=db.ideas, projects=db.projects;
   const audio=ideas.filter(i=>i.type==='audio').length;
   const lyric=ideas.filter(i=>i.type==='lyric').length;
@@ -1899,7 +1906,7 @@ function openInsights(){
     :'<div style="color:var(--text-faint);font-size:12px">No tags yet.</div>';
 
   // activity + trash
-  renderActivityTile();
+  await renderActivityTile();
   renderTrashTile();
 
   document.getElementById('insights-modal').classList.add('open');
