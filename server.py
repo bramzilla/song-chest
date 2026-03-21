@@ -451,6 +451,26 @@ def browse_folder():
     except subprocess.TimeoutExpired:
         return jsonify({"path": None})
 
+@app.route("/api/obsidian/note-content")
+def obsidian_note_content():
+    obs = CONFIG.get("integrations", {}).get("obsidian", {})
+    if not obs.get("enabled") or not obs.get("vault_path"):
+        return jsonify({"error": "Obsidian not enabled"}), 400
+    vault = Path(obs["vault_path"])
+    rel = request.args.get("path", "").strip()
+    if not rel:
+        return jsonify({"error": "path required"}), 400
+    try:
+        full = Path(os.path.normpath(vault / rel))
+    except Exception:
+        abort(400)
+    if not str(full).startswith(str(vault) + os.sep):
+        abort(403)
+    if not full.exists() or not full.is_file():
+        abort(404)
+    return full.read_text(encoding="utf-8", errors="replace"), 200, \
+        {"Content-Type": "text/plain; charset=utf-8"}
+
 @app.route("/api/obsidian/notes")
 def obsidian_notes():
     return jsonify(scan_obsidian_vault(CONFIG))
