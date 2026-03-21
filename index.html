@@ -1638,7 +1638,7 @@ async function openObsNote(noteId){
       const icon=idea.type==='audio'?'♪':'✎';
       const typeColor=idea.type==='audio'?'var(--color-teal)':'var(--color-crimson)';
       const projDot=proj?`<span class="nav-dot" style="background:${proj.color};width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:4px"></span><span style="font-size:10px;color:var(--text-faint)">${esc(proj.name)}</span>`:'<span style="font-size:10px;color:var(--text-faint)">Unassigned</span>';
-      return `<div class="obs-linked-idea fi" onclick="closeModal('obs-modal');openViewModal('${idea.id}')" style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;cursor:pointer;border:1px solid var(--border);margin-bottom:4px;background:var(--surface2)">
+      return `<div class="obs-linked-idea fi" onclick="closeModal('obs-modal');viewIdea('${idea.id}')" style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;cursor:pointer;border:1px solid var(--border);margin-bottom:4px;background:var(--surface2)">
         <span style="color:${typeColor};font-size:14px;width:16px;text-align:center">${icon}</span>
         <div style="flex:1;min-width:0">
           <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(idea.title)}</div>
