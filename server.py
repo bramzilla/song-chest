@@ -309,6 +309,8 @@ def update_config():
     for k in ("audio_folder", "lyrics_folder"):
         if body.get(k):
             CONFIG[k] = str(Path(body[k]).expanduser().resolve())
+    if "preferences" in body:
+        CONFIG.setdefault("preferences", {}).update(body["preferences"])
     if "integrations" in body:
         intg = body["integrations"]
         obs = intg.get("obsidian", {})

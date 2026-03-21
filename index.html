@@ -569,7 +569,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:13p
       <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
         <div class="mseclabel" style="margin-bottom:8px">Lyrics Display</div>
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--text-dim)">
-          <input type="checkbox" id="pref-hide-fm" style="accent-color:var(--gold)" onchange="savePref('pref_hide_frontmatter',this.checked)">
+          <input type="checkbox" id="pref-hide-fm" style="accent-color:var(--gold)" onchange="savePref('hide_frontmatter',this.checked)">
           Hide YAML frontmatter in .md files
         </label>
       </div>
@@ -1094,7 +1094,7 @@ async function openLyricFocus(id){
 
 function lfRenderRead(){
   const el=document.getElementById('lf-read');
-  const hideFm=localStorage.getItem('pref_hide_frontmatter')==='1';
+  const hideFm=!!(cfg.preferences?.hide_frontmatter);
   const src=hideFm?stripFrontmatter(lf.content):lf.content;
   if(lf.ext==='md'){
     el.className='md-rendered';el.innerHTML=renderMarkdown(src||'—');
@@ -1162,7 +1162,7 @@ function viewIdea(id){
       }
       let bodyHtml;
       if(ext==='md'){
-        const hideFm=localStorage.getItem('pref_hide_frontmatter')==='1';
+        const hideFm=!!(cfg.preferences?.hide_frontmatter);
         const src=hideFm?stripFrontmatter(content):content;
         bodyHtml=`<div class="lyric-display md-rendered">${renderMarkdown(src||'—')}</div>`;
       } else {
@@ -1517,7 +1517,7 @@ function openSettings(){
   document.getElementById('s-audio-input').value=cfg.audio_folder||'';
   document.getElementById('s-lyrics-input').value=cfg.lyrics_folder||'';
   document.getElementById('s-msg').textContent='';
-  document.getElementById('pref-hide-fm').checked=localStorage.getItem('pref_hide_frontmatter')==='1';
+  document.getElementById('pref-hide-fm').checked=!!(cfg.preferences?.hide_frontmatter);
   // Obsidian settings
   const obs=cfg.integrations?.obsidian||{};
   document.getElementById('obs-enabled').checked=!!obs.enabled;
@@ -1655,7 +1655,7 @@ async function openObsNote(noteId){
     const r=await fetch('/api/obsidian/note-content?'+new URLSearchParams({path:note.vault_relative_path}));
     if(!r.ok)throw new Error('not found');
     const text=await r.text();
-    const hideFm=localStorage.getItem('pref_hide_frontmatter')==='1';
+    const hideFm=!!(cfg.preferences?.hide_frontmatter);
     const src=hideFm?stripFrontmatter(text):text;
     document.getElementById('obs-modal-content').innerHTML=`<div class="lyric-display md-rendered">${renderMarkdown(src)}</div>`;
   }catch(e){
@@ -2075,7 +2075,11 @@ function renderMarkdown(text){
   closeP();
   return html;
 }
-function savePref(key,val){localStorage.setItem(key,val?'1':'0');}
+async function savePref(key,val){
+  cfg.preferences=cfg.preferences||{};
+  cfg.preferences[key]=val;
+  await api('/api/config','POST',{preferences:{[key]:val}});
+}
 function tCol(tag,alpha){let h=0;for(const c of tag)h=(h*31+c.charCodeAt(0))&0xffffffff;const p=[[218,165,32],[201,40,29],[99,182,207],[124,182,124],[182,106,182],[207,142,78],[91,141,217],[217,136,91],[110,184,168]];const[r,g,b]=p[Math.abs(h)%p.length];return`rgba(${r},${g},${b},${alpha})`;}
 function prand(seed){let h=0;for(const c of String(seed))h=(h*31+c.charCodeAt(0))&0x7fffffff;return(h%100)/100;}
 function relDate(ts){const d=Date.now()-ts,m=Math.floor(d/60000);if(m<60)return m<=1?'just now':m+'m ago';const hr=Math.floor(m/60);if(hr<24)return hr+'h ago';const dy=Math.floor(hr/24);if(dy<7)return dy+'d ago';return new Date(ts).toLocaleDateString('en-GB',{day:'numeric',month:'short'});}
