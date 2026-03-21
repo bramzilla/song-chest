@@ -70,63 +70,64 @@ python server.py
 
 ---
 
-## Try it with Docker (demo mode)
+## Try it with Docker
 
-No Python required. Docker runs a pre-populated demo environment so you can explore the app instantly.
+No Python required. Two demo modes are available.
 
 **Prerequisites:** [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running.
-
-### Start the demo
 
 ```bash
 git clone https://github.com/bramzilla/song-chest.git
 cd song-chest
-docker compose up
 ```
 
-Then open **http://localhost:5000** in your browser.
+### Crowded demo — pre-populated workspace
 
-The demo comes loaded with sample projects, ideas, lyrics, tags, and activity — so you land in a working workspace rather than a blank slate.
+A ready-to-explore workspace with 3 projects, 9 ideas, real lyric content, tags, linked ideas, statuses, and a populated activity feed.
+
+```bash
+docker compose up demo
+```
+
+Open **http://localhost:5000**
+
+### Lonesome demo — fresh install
+
+A completely blank slate — exactly what a new user sees on first launch. Use this to demo the setup flow: configuring folders, creating a first project, capturing a first idea.
+
+```bash
+docker compose up lonesome
+```
+
+Open **http://localhost:5001**
+
+### Run both at once
+
+```bash
+docker compose up
+# crowded  → http://localhost:5000
+# lonesome → http://localhost:5001
+```
 
 ### Stop
 
 ```bash
-# In the terminal where it's running: Ctrl+C
-# Or if running in background:
-docker compose down
+Ctrl+C                  # if running in foreground
+docker compose down     # if running in background
 ```
 
-### Run in the background
+### Background mode
 
 ```bash
-docker compose up -d          # start (detached)
-docker compose logs -f        # watch logs
-docker compose down           # stop
+docker compose up -d demo       # start detached
+docker compose logs -f          # watch logs
+docker compose down             # stop
 ```
 
-### Fresh demo every time
+### Notes
 
-By default the container starts with clean demo data on every run — great for repeatable demos. Any changes you make are lost when the container stops. This is intentional.
-
-To **persist your changes** between restarts, uncomment the volume lines in `docker-compose.yml`:
-
-```yaml
-services:
-  song-chest:
-    volumes:
-      - songchest-data:/app/data.json
-
-volumes:
-  songchest-data:
-```
-
-### Rebuild after code changes
-
-If you edit `server.py` or `index.html` and want the container to pick them up:
-
-```bash
-docker compose up --build
-```
+- **Data resets on every restart** — intentional for repeatable demos. Changes made during a session are lost when the container stops.
+- **Rebuild after code changes:** `docker compose up --build`
 
 ---
 

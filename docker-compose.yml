@@ -1,12 +1,33 @@
 services:
-  song-chest:
+
+  # ── Crowded demo ──────────────────────────────────────────────
+  # Pre-populated workspace: 3 projects, 9 ideas, lyrics, tags, activity.
+  # Good for demoing features without having to set anything up.
+  #
+  #   docker compose up demo
+  #   → http://localhost:5000
+  #
+  demo:
     build: .
     ports:
       - "5000:5000"
-    # By default the container starts with fresh demo data on every run.
-    # To persist changes between restarts, uncomment the lines below:
-    # volumes:
-    #   - songchest-data:/app/data.json
 
-# volumes:
-#   songchest-data:
+  # ── Lonesome demo ─────────────────────────────────────────────
+  # Blank slate — exactly what a new user sees on first launch.
+  # Good for demoing the setup flow: adding paths, creating first
+  # project, capturing a first idea, configuring integrations.
+  #
+  #   docker compose up lonesome
+  #   → http://localhost:5001
+  #
+  lonesome:
+    build: .
+    ports:
+      - "5001:5000"
+    volumes:
+      - ./demo/data-empty.json:/app/data.json:ro
+
+  # Run both at once:
+  #   docker compose up
+  #   → crowded  http://localhost:5000
+  #   → lonesome http://localhost:5001
