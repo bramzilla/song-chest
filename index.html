@@ -577,17 +577,13 @@ header{display:flex;align-items:center;justify-content:space-between;padding:13p
             <div class="ct-row"><div class="ct-dot" style="background:var(--gold)"></div><div class="ct-label">Edited notes on "chorus draft"</div><div class="ct-meta">yesterday</div></div>
           </div>
         </div>
-        <div class="coming-tile">
+        <div class="coming-tile" style="opacity:1">
           <div class="coming-tile-head">
             <span class="coming-tile-icon">🗑</span>
             <span class="coming-tile-title">Trash</span>
-            <span class="coming-soon-badge">soon</span>
+            <button id="empty-trash-btn" class="btn sm" style="font-size:10px;padding:2px 8px;color:var(--crimson);border-color:var(--crimson);display:none" onclick="emptyTrash()">Empty</button>
           </div>
-          <div class="coming-tile-body" id="ct-trash">
-            <div class="ct-empty">Deleted ideas would appear here so you can restore them before they're gone for good.</div>
-            <div class="ct-row" style="opacity:.5"><div class="ct-dot" style="background:var(--crimson)"></div><div class="ct-label">old verse attempt</div><div class="ct-meta">3d ago</div></div>
-            <div class="ct-row" style="opacity:.5"><div class="ct-dot" style="background:var(--crimson)"></div><div class="ct-label">scratch loop 7</div><div class="ct-meta">1w ago</div></div>
-          </div>
+          <div class="coming-tile-body" id="ct-trash" style="max-height:180px;overflow-y:auto"></div>
         </div>
       </div>
     </div>
@@ -648,7 +644,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:13p
 
 <script>
 const COLORS=['#DAA520','#C9281D','#63B6CF','#7CB67C','#B66AB6','#CF8E4E','#5B8DD9','#D9885B','#6EB8A8','#C47070'];
-let db={projects:[],ideas:[],move_history:[],obsidian_links:[]};
+let db={projects:[],ideas:[],move_history:[],obsidian_links:[],trash:[]};
 let cfg={audio_folder:'',lyrics_folder:'',audio_exists:false,lyrics_exists:false};
 let files={audio:[],lyrics:[]};
 let obsNotes=null; // cached vault scan results
@@ -1027,7 +1023,15 @@ function viewIdea(id){
 }
 
 async function saveNotes(){const idea=db.ideas.find(i=>i.id===ui.viewingId);if(!idea)return;idea.notes=document.getElementById('vm-notes').value;await api('/api/ideas/'+idea.id+'/notes','PATCH',{notes:idea.notes});}
-async function deleteIdea(){if(!ui.viewingId||!confirm('Delete this idea?'))return;await api('/api/ideas/'+ui.viewingId,'DELETE');closeModal('view-modal');await loadAll();toast('Idea deleted.');}
+async function deleteIdea(){
+  if(!ui.viewingId)return;
+  const idea=db.ideas.find(i=>i.id===ui.viewingId);
+  if(!confirm(`Move "${idea?.title||'this idea'}" to Trash?`))return;
+  await api('/api/ideas/'+ui.viewingId,'DELETE');
+  closeModal('view-modal');
+  await loadAll();
+  toast('Moved to Trash. Restore it from Insights → Trash.');
+}
 
 // ── move modal ────────────────────────────────────────────────
 function openMoveModal(){
@@ -1605,7 +1609,67 @@ function openInsights(){
     ?topTags.map(([tag,cnt])=>`<div class="insight-row"><div class="ir-name" style="color:${tCol(tag,1)}">${esc(tag)}</div><div class="ir-bar-wrap"><div class="ir-bar" style="width:${Math.round(cnt/maxT*100)}%;background:${tCol(tag,0.6)}"></div></div><div class="ir-count">${cnt}</div></div>`).join('')
     :'<div style="color:var(--text-faint);font-size:12px">No tags yet.</div>';
 
+  // trash
+  renderTrashTile();
+
   document.getElementById('insights-modal').classList.add('open');
+}
+
+function renderTrashTile(){
+  const trash=db.trash||[];
+  const el=document.getElementById('ct-trash');
+  const emptyBtn=document.getElementById('empty-trash-btn');
+  if(!trash.length){
+    el.innerHTML='<div style="font-size:11px;color:var(--text-faint);padding:4px 0">Trash is empty. Deleted ideas land here so you can restore them.</div>';
+    emptyBtn.style.display='none';
+    return;
+  }
+  emptyBtn.style.display='';
+  el.innerHTML=trash.map(idea=>{
+    const icon=idea.type==='audio'?'♪':'✎';
+    const col=idea.type==='audio'?'var(--teal)':'var(--crimson)';
+    return `<div class="ct-row" style="gap:6px;align-items:center">
+      <span style="color:${col};font-size:12px;width:14px;text-align:center;flex-shrink:0">${icon}</span>
+      <div class="ct-label" style="flex:1" title="${esc(idea.title)}">${esc(idea.title)}</div>
+      <div class="ct-meta">${relDate(idea.deleted_at)}</div>
+      <button class="btn sm" style="font-size:9px;padding:1px 6px;flex-shrink:0" onclick="restoreIdea('${idea.id}')">Restore</button>
+      <button class="btn sm" style="font-size:9px;padding:1px 6px;flex-shrink:0;color:var(--crimson);border-color:var(--crimson)" onclick="permanentDelete('${idea.id}')">✕</button>
+    </div>`;
+  }).join('');
+}
+
+async function restoreIdea(id){
+  try{
+    const idea=await api('/api/trash/'+id+'/restore','POST');
+    db.trash=(db.trash||[]).filter(x=>x.id!==id);
+    db.ideas.unshift(idea);
+    renderTrashTile();
+    render();
+    toast('Idea restored.');
+  }catch(e){toast('Error: '+e.message);}
+}
+
+async function permanentDelete(id){
+  const item=(db.trash||[]).find(x=>x.id===id);
+  if(!confirm(`Permanently delete "${item?.title||'this idea'}"? This cannot be undone.`))return;
+  try{
+    await api('/api/trash/'+id,'DELETE');
+    db.trash=(db.trash||[]).filter(x=>x.id!==id);
+    renderTrashTile();
+    toast('Permanently deleted.');
+  }catch(e){toast('Error: '+e.message);}
+}
+
+async function emptyTrash(){
+  const n=(db.trash||[]).length;
+  if(!n)return;
+  if(!confirm(`Permanently delete all ${n} item${n!==1?'s':''} in Trash? This cannot be undone.`))return;
+  try{
+    await api('/api/trash','DELETE');
+    db.trash=[];
+    renderTrashTile();
+    toast('Trash emptied.');
+  }catch(e){toast('Error: '+e.message);}
 }
 
 // ── history modal ─────────────────────────────────────────────
@@ -1757,9 +1821,9 @@ function updateBulkBar(){
 }
 async function bulkDelete(){
   const n=ui.selected.size;if(!n)return;
-  if(!confirm(`Delete ${n} idea${n!==1?'s':''}? This cannot be undone.`))return;
+  if(!confirm(`Move ${n} idea${n!==1?'s':''} to Trash?`))return;
   const ids=[...ui.selected];
-  try{for(const id of ids)await api('/api/ideas/'+id,'DELETE');exitBulkMode();db=await api('/api/data');render();toast(`Deleted ${n} idea${n!==1?'s':''}.`);}
+  try{for(const id of ids)await api('/api/ideas/'+id,'DELETE');exitBulkMode();db=await api('/api/data');render();toast(`${n} idea${n!==1?'s':''} moved to Trash.`);}
   catch(e){toast('Error: '+e.message);}
 }
 async function bulkAssignProject(pid){

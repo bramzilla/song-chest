@@ -179,8 +179,9 @@ def load_data():
         d.setdefault("ideas", [])
         d.setdefault("move_history", [])
         d.setdefault("obsidian_links", [])
+        d.setdefault("trash", [])
         return d
-    return {"projects": [], "ideas": [], "move_history": [], "obsidian_links": []}
+    return {"projects": [], "ideas": [], "move_history": [], "obsidian_links": [], "trash": []}
 
 def save_data(data):
     tmp = DATA_FILE.with_suffix(".tmp")
@@ -605,10 +606,44 @@ def update_idea(iid):
 @app.route("/api/ideas/<iid>", methods=["DELETE"])
 def delete_idea(iid):
     data = load_data()
-    data["ideas"] = [x for x in data["ideas"] if x["id"]!=iid]
-    for idea in data["ideas"]: idea["links"] = [l for l in idea["links"] if l!=iid]
-    data["obsidian_links"] = [l for l in data.get("obsidian_links",[]) if l["idea_id"]!=iid]
-    save_data(data); return jsonify({"ok":True})
+    idea = next((x for x in data["ideas"] if x["id"] == iid), None)
+    if not idea: abort(404)
+    # Soft-delete: remove from ideas, sever links, move to trash
+    data["ideas"] = [x for x in data["ideas"] if x["id"] != iid]
+    for other in data["ideas"]: other["links"] = [l for l in other["links"] if l != iid]
+    data["obsidian_links"] = [l for l in data.get("obsidian_links", []) if l["idea_id"] != iid]
+    idea["deleted_at"] = now_ms()
+    data.setdefault("trash", []).insert(0, idea)
+    save_data(data); return jsonify({"ok": True})
+
+@app.route("/api/trash")
+def get_trash():
+    data = load_data()
+    return jsonify(sorted(data.get("trash", []), key=lambda x: x.get("deleted_at", 0), reverse=True))
+
+@app.route("/api/trash/<iid>/restore", methods=["POST"])
+def restore_idea(iid):
+    data = load_data()
+    idea = next((x for x in data.get("trash", []) if x["id"] == iid), None)
+    if not idea: abort(404)
+    data["trash"] = [x for x in data["trash"] if x["id"] != iid]
+    idea.pop("deleted_at", None)
+    idea["updated"] = now_ms()
+    data["ideas"].insert(0, idea)
+    save_data(data); return jsonify(idea)
+
+@app.route("/api/trash/<iid>", methods=["DELETE"])
+def delete_from_trash(iid):
+    data = load_data()
+    data["trash"] = [x for x in data.get("trash", []) if x["id"] != iid]
+    save_data(data); return jsonify({"ok": True})
+
+@app.route("/api/trash", methods=["DELETE"])
+def empty_trash():
+    data = load_data()
+    count = len(data.get("trash", []))
+    data["trash"] = []
+    save_data(data); return jsonify({"ok": True, "removed": count})
 
 @app.route("/api/ideas/<iid>/notes", methods=["PATCH"])
 def patch_notes(iid):
