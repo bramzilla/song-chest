@@ -93,13 +93,18 @@ Open **http://localhost:5000**
 
 ### Lonesome demo — fresh install
 
-A completely blank slate — exactly what a new user sees on first launch. Use this to demo the setup flow: configuring folders, creating a first project, capturing a first idea.
+A blank workspace, but with real files waiting to be discovered. The audio and lyrics folders are pre-loaded with the same content as the crowded demo — you just have to find and organise it yourself.
 
 ```bash
 docker compose up lonesome
 ```
 
 Open **http://localhost:5001**
+
+**Setup flow to demo:**
+1. Open Settings → paths are already pointing at `/app/audio` and `/app/lyrics`
+2. Click **↻ Sync folders** → files flood in as bare unassigned ideas
+3. Create projects, drag ideas in, add tags, write notes, link ideas together
 
 ### Run both at once
 

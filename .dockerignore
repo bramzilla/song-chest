@@ -15,3 +15,4 @@ launcher.py
 test_api.py
 CLAUDE.md
 README.md
+# demo/lyrics and demo/data*.json are intentionally included
