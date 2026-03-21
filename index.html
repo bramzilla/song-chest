@@ -7,6 +7,18 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;1,9..144,400&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
 :root{--gold:#DAA520;--gold-dim:#b8891a;--gold-pale:rgba(218,165,32,0.12);--crimson:#C9281D;--crimson-pale:rgba(201,40,29,0.12);--teal:#63B6CF;--teal-pale:rgba(99,182,207,0.12);--bg:#1e1c19;--bg2:#262420;--bg3:#2e2b27;--bg4:#363330;--text:#e8e0d0;--text-dim:#a09888;--text-faint:#5a5450;--border:rgba(218,165,32,0.15);--border-strong:rgba(218,165,32,0.3);--green:#6db86d}
+[data-theme="basic"]{--gold:#2a2a2a;--gold-dim:#111;--gold-pale:rgba(0,0,0,0.06);--crimson:#b83232;--crimson-pale:rgba(184,50,50,0.08);--teal:#555;--teal-pale:rgba(0,0,0,0.06);--bg:#f5f5f2;--bg2:#ffffff;--bg3:#ebebeb;--bg4:#dedede;--text:#1a1a1a;--text-dim:#555;--text-faint:#999;--border:rgba(0,0,0,0.1);--border-strong:rgba(0,0,0,0.22);--green:#444}
+[data-theme="colorful"]{--gold:#FF9500;--gold-dim:#e07800;--gold-pale:rgba(255,149,0,0.14);--crimson:#FF2D55;--crimson-pale:rgba(255,45,85,0.13);--teal:#00C8FF;--teal-pale:rgba(0,200,255,0.12);--bg:#0d0b14;--bg2:#13111e;--bg3:#1a1828;--bg4:#222033;--text:#f0eeff;--text-dim:#b0a8cc;--text-faint:#5a5470;--border:rgba(255,149,0,0.18);--border-strong:rgba(255,149,0,0.36);--green:#34C759}
+/* custom theme vars are set via JS inline styles on :root */
+.theme-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.theme-card{border:2px solid var(--border);border-radius:7px;overflow:hidden;cursor:pointer;transition:border-color .15s}
+.theme-card:hover{border-color:var(--gold)}.theme-card.active{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold)}
+.theme-preview{height:40px;display:flex;overflow:hidden}
+.theme-label{font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--text-faint);padding:4px 6px;text-align:center;background:var(--bg3)}
+.custom-color-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.cc-row{display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer}
+.cc-label{font-size:9px;color:var(--text-faint);text-align:center;letter-spacing:.3px}
+.cc-input{width:38px;height:28px;border:1px solid var(--border);border-radius:4px;padding:2px;background:var(--bg2);cursor:pointer}
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--bg);color:var(--text);font-family:'DM Mono',monospace;font-size:13px;min-height:100vh;overflow-x:hidden}
 header{display:flex;align-items:center;justify-content:space-between;padding:13px 20px;border-bottom:1px solid var(--border);background:var(--bg2);position:sticky;top:0;z-index:100;gap:10px;flex-wrap:wrap}
@@ -262,9 +274,9 @@ header{display:flex;align-items:center;justify-content:space-between;padding:13p
 .coming-tile-title{font-family:'Fraunces',serif;font-size:13px;font-weight:500;flex:1}
 .coming-soon-badge{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;padding:2px 6px;border-radius:3px;background:var(--bg4);color:var(--text-faint);border:1px solid var(--border)}
 .coming-tile-body{padding:8px 13px 10px;display:flex;flex-direction:column;gap:4px}
-.ct-row{display:flex;align-items:center;gap:8px;padding:4px 0}
-.ct-dot{width:6px;height:6px;border-radius:50%;background:var(--border-strong);flex-shrink:0}
-.ct-label{font-family:'Fraunces',serif;font-size:11px;color:var(--text-dim);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ct-row{display:flex;align-items:flex-start;gap:8px;padding:4px 0}
+.ct-dot{width:6px;height:6px;border-radius:50%;background:var(--border-strong);flex-shrink:0;margin-top:3px}
+.ct-label{font-family:'Fraunces',serif;font-size:11px;color:var(--text-dim);flex:1;line-height:1.4}
 .ct-meta{font-size:10px;color:var(--text-faint);white-space:nowrap}
 .ct-empty{font-size:11px;color:var(--text-faint);padding:6px 0;line-height:1.6}
 /* sync banner */
@@ -567,9 +579,41 @@ header{display:flex;align-items:center;justify-content:space-between;padding:13p
         <button class="btn sm" onclick="downloadExport()">⬇ Download backup.zip</button>
       </div>
       <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+        <div class="mseclabel" style="margin-bottom:10px">Theme</div>
+        <div class="theme-grid">
+          <div class="theme-card" id="tc-default" onclick="setTheme('default')" title="Default">
+            <div class="theme-preview"><div style="flex:2;background:#1e1c19"></div><div style="flex:1;background:#DAA520;opacity:.75"></div><div style="flex:1;background:#63B6CF;opacity:.75"></div></div>
+            <div class="theme-label">Default</div>
+          </div>
+          <div class="theme-card" id="tc-basic" onclick="setTheme('basic')" title="Basic">
+            <div class="theme-preview"><div style="flex:2;background:#f5f5f2"></div><div style="flex:1;background:#2a2a2a;opacity:.6"></div><div style="flex:1;background:#888;opacity:.5"></div></div>
+            <div class="theme-label">Basic</div>
+          </div>
+          <div class="theme-card" id="tc-colorful" onclick="setTheme('colorful')" title="Colorful">
+            <div class="theme-preview"><div style="flex:2;background:#0d0b14"></div><div style="flex:1;background:#FF9500;opacity:.85"></div><div style="flex:1;background:#00C8FF;opacity:.85"></div></div>
+            <div class="theme-label">Colorful</div>
+          </div>
+          <div class="theme-card" id="tc-custom" onclick="setTheme('custom')" title="Custom">
+            <div class="theme-preview" id="tp-custom-preview"><div style="flex:2;background:#333"></div><div style="flex:1;background:#888"></div><div style="flex:1;background:#aaa"></div></div>
+            <div class="theme-label">Custom</div>
+          </div>
+        </div>
+        <div id="custom-colors" style="display:none;margin-top:10px;padding:10px;background:var(--bg3);border-radius:6px;border:1px solid var(--border)">
+          <div class="mseclabel" style="margin-bottom:8px">Custom Colors</div>
+          <div class="custom-color-grid">
+            <label class="cc-row"><span class="cc-label">Background</span><input type="color" id="tc-color-bg" class="cc-input" value="#1e1c19" oninput="previewCustomColors()"></label>
+            <label class="cc-row"><span class="cc-label">Surface</span><input type="color" id="tc-color-bg2" class="cc-input" value="#262420" oninput="previewCustomColors()"></label>
+            <label class="cc-row"><span class="cc-label">Primary</span><input type="color" id="tc-color-primary" class="cc-input" value="#DAA520" oninput="previewCustomColors()"></label>
+            <label class="cc-row"><span class="cc-label">Audio</span><input type="color" id="tc-color-audio" class="cc-input" value="#63B6CF" oninput="previewCustomColors()"></label>
+            <label class="cc-row"><span class="cc-label">Text</span><input type="color" id="tc-color-text" class="cc-input" value="#e8e0d0" oninput="previewCustomColors()"></label>
+          </div>
+          <button class="btn sm" style="margin-top:10px" onclick="saveCustomColors()">Apply Custom Theme</button>
+        </div>
+      </div>
+      <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
         <div class="mseclabel" style="margin-bottom:8px">Lyrics Display</div>
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--text-dim)">
-          <input type="checkbox" id="pref-hide-fm" style="accent-color:var(--gold)" onchange="savePref('pref_hide_frontmatter',this.checked)">
+          <input type="checkbox" id="pref-hide-fm" style="accent-color:var(--gold)" onchange="savePref('hide_frontmatter',this.checked)">
           Hide YAML frontmatter in .md files
         </label>
       </div>
@@ -747,6 +791,7 @@ async function api(path,method='GET',body=null){
 async function loadAll(){
   [db,cfg,files]=await Promise.all([api('/api/data'),api('/api/config'),api('/api/scan')]);
   obsNotes=null; // vault may have changed since last scan
+  applyTheme(cfg.preferences?.theme||'default');
   render();
   // Pre-fetch note count in background so the sidebar badge is populated on load
   if(cfg.integrations?.obsidian?.enabled){
@@ -1094,7 +1139,7 @@ async function openLyricFocus(id){
 
 function lfRenderRead(){
   const el=document.getElementById('lf-read');
-  const hideFm=localStorage.getItem('pref_hide_frontmatter')==='1';
+  const hideFm=!!(cfg.preferences?.hide_frontmatter);
   const src=hideFm?stripFrontmatter(lf.content):lf.content;
   if(lf.ext==='md'){
     el.className='md-rendered';el.innerHTML=renderMarkdown(src||'—');
@@ -1162,7 +1207,7 @@ function viewIdea(id){
       }
       let bodyHtml;
       if(ext==='md'){
-        const hideFm=localStorage.getItem('pref_hide_frontmatter')==='1';
+        const hideFm=!!(cfg.preferences?.hide_frontmatter);
         const src=hideFm?stripFrontmatter(content):content;
         bodyHtml=`<div class="lyric-display md-rendered">${renderMarkdown(src||'—')}</div>`;
       } else {
@@ -1517,7 +1562,17 @@ function openSettings(){
   document.getElementById('s-audio-input').value=cfg.audio_folder||'';
   document.getElementById('s-lyrics-input').value=cfg.lyrics_folder||'';
   document.getElementById('s-msg').textContent='';
-  document.getElementById('pref-hide-fm').checked=localStorage.getItem('pref_hide_frontmatter')==='1';
+  document.getElementById('pref-hide-fm').checked=!!(cfg.preferences?.hide_frontmatter);
+  // Theme
+  const currentTheme=cfg.preferences?.theme||'default';
+  updateThemeCards(currentTheme);
+  const tc=cfg.preferences?.theme_custom||{};
+  if(tc.bg) document.getElementById('tc-color-bg').value=tc.bg;
+  if(tc.bg2) document.getElementById('tc-color-bg2').value=tc.bg2;
+  if(tc.primary) document.getElementById('tc-color-primary').value=tc.primary;
+  if(tc.audio) document.getElementById('tc-color-audio').value=tc.audio;
+  if(tc.text) document.getElementById('tc-color-text').value=tc.text;
+  updateCustomPreviewSwatch(tc);
   // Obsidian settings
   const obs=cfg.integrations?.obsidian||{};
   document.getElementById('obs-enabled').checked=!!obs.enabled;
@@ -1638,7 +1693,7 @@ async function openObsNote(noteId){
       const icon=idea.type==='audio'?'♪':'✎';
       const typeColor=idea.type==='audio'?'var(--color-teal)':'var(--color-crimson)';
       const projDot=proj?`<span class="nav-dot" style="background:${proj.color};width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:4px"></span><span style="font-size:10px;color:var(--text-faint)">${esc(proj.name)}</span>`:'<span style="font-size:10px;color:var(--text-faint)">Unassigned</span>';
-      return `<div class="obs-linked-idea fi" onclick="closeModal('obs-modal');openViewModal('${idea.id}')" style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;cursor:pointer;border:1px solid var(--border);margin-bottom:4px;background:var(--surface2)">
+      return `<div class="obs-linked-idea fi" onclick="closeModal('obs-modal');viewIdea('${idea.id}')" style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;cursor:pointer;border:1px solid var(--border);margin-bottom:4px;background:var(--surface2)">
         <span style="color:${typeColor};font-size:14px;width:16px;text-align:center">${icon}</span>
         <div style="flex:1;min-width:0">
           <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(idea.title)}</div>
@@ -1655,7 +1710,7 @@ async function openObsNote(noteId){
     const r=await fetch('/api/obsidian/note-content?'+new URLSearchParams({path:note.vault_relative_path}));
     if(!r.ok)throw new Error('not found');
     const text=await r.text();
-    const hideFm=localStorage.getItem('pref_hide_frontmatter')==='1';
+    const hideFm=!!(cfg.preferences?.hide_frontmatter);
     const src=hideFm?stripFrontmatter(text):text;
     document.getElementById('obs-modal-content').innerHTML=`<div class="lyric-display md-rendered">${renderMarkdown(src)}</div>`;
   }catch(e){
@@ -1850,9 +1905,11 @@ function openInsights(){
   document.getElementById('insights-modal').classList.add('open');
 }
 
-function renderActivityTile(){
-  const activity=(db.activity||[]).slice(0,50);
+async function renderActivityTile(){
   const el=document.getElementById('ct-activity');
+  let activity;
+  try{ activity=(await api('/api/activity')).slice(0,50); }
+  catch(e){ activity=(db.activity||[]).slice(0,50); }
   if(!activity.length){
     el.innerHTML='<div style="font-size:11px;color:var(--text-faint);padding:4px 0">No activity yet. Changes you make will appear here.</div>';
     return;
@@ -1870,7 +1927,7 @@ function renderActivityTile(){
   };
   el.innerHTML=activity.map(e=>{
     const m=kindMeta[e.kind]||{dot:'var(--text-faint)',verb:'Updated'};
-    const title=esc((e.title||'').slice(0,36));
+    const title=esc(e.title||'');
     let label;
     if(e.kind==='created')   label=`Created <em>${title}</em>`;
     else if(e.kind==='moved') label=`Assigned <em>${title}</em> to ${esc(e.detail||'Unassigned')}`;
@@ -2073,7 +2130,101 @@ function renderMarkdown(text){
   closeP();
   return html;
 }
-function savePref(key,val){localStorage.setItem(key,val?'1':'0');}
+// ── Theme ──────────────────────────────────────────────────────
+function hexToRgb(hex){const m=(hex||'#000').replace('#','').match(/.{2}/g);return m?m.map(x=>parseInt(x,16)):[0,0,0];}
+function rgbToHex(r,g,b){return '#'+[r,g,b].map(v=>Math.max(0,Math.min(255,Math.round(v))).toString(16).padStart(2,'0')).join('');}
+function lightenHex(hex,pct){const[r,g,b]=hexToRgb(hex);const f=pct/100;return rgbToHex(r+(255-r)*f,g+(255-g)*f,b+(255-b)*f);}
+function darkenHex(hex,pct){const[r,g,b]=hexToRgb(hex);const f=1-pct/100;return rgbToHex(r*f,g*f,b*f);}
+function hexAlpha(hex,a){const[r,g,b]=hexToRgb(hex);return `rgba(${r},${g},${b},${a})`;}
+
+function applyTheme(theme){
+  const root=document.documentElement;
+  ['--bg','--bg2','--bg3','--bg4','--text','--text-dim','--text-faint',
+   '--gold','--gold-dim','--gold-pale','--teal','--teal-pale',
+   '--crimson','--crimson-pale','--border','--border-strong','--green'
+  ].forEach(v=>root.style.removeProperty(v));
+  root.dataset.theme=(theme==='default'||!theme)?'':theme;
+  if(theme==='custom') applyCustomTheme(cfg.preferences?.theme_custom||{});
+}
+
+function applyCustomTheme(c){
+  const root=document.documentElement;
+  const bg=c.bg||'#1e1c19', bg2=c.bg2||'#262420';
+  const primary=c.primary||'#DAA520', audio=c.audio||'#63B6CF', text=c.text||'#e8e0d0';
+  root.style.setProperty('--bg', bg);
+  root.style.setProperty('--bg2', bg2);
+  root.style.setProperty('--bg3', lightenHex(bg2, 8));
+  root.style.setProperty('--bg4', lightenHex(bg2, 16));
+  root.style.setProperty('--text', text);
+  root.style.setProperty('--text-dim', hexAlpha(text, 0.65));
+  root.style.setProperty('--text-faint', hexAlpha(text, 0.38));
+  root.style.setProperty('--gold', primary);
+  root.style.setProperty('--gold-dim', darkenHex(primary, 12));
+  root.style.setProperty('--gold-pale', hexAlpha(primary, 0.12));
+  root.style.setProperty('--teal', audio);
+  root.style.setProperty('--teal-pale', hexAlpha(audio, 0.12));
+  root.style.setProperty('--crimson', '#C9281D');
+  root.style.setProperty('--crimson-pale', 'rgba(201,40,29,0.12)');
+  root.style.setProperty('--border', hexAlpha(primary, 0.15));
+  root.style.setProperty('--border-strong', hexAlpha(primary, 0.30));
+  root.style.setProperty('--green', '#6db86d');
+}
+
+function updateThemeCards(theme){
+  document.querySelectorAll('.theme-card').forEach(c=>c.classList.remove('active'));
+  document.getElementById('tc-'+(theme||'default'))?.classList.add('active');
+  document.getElementById('custom-colors').style.display=theme==='custom'?'':'none';
+}
+
+function updateCustomPreviewSwatch(c){
+  const prev=document.getElementById('tp-custom-preview');
+  if(!prev) return;
+  const ch=prev.children;
+  if(c.bg)      ch[0].style.background=c.bg;
+  if(c.primary) ch[1].style.background=c.primary;
+  if(c.audio)   ch[2].style.background=c.audio;
+}
+
+async function setTheme(theme){
+  cfg.preferences=cfg.preferences||{};
+  cfg.preferences.theme=theme;
+  applyTheme(theme);
+  updateThemeCards(theme);
+  await api('/api/config','POST',{preferences:{theme}});
+}
+
+function previewCustomColors(){
+  const c={
+    bg:document.getElementById('tc-color-bg').value,
+    bg2:document.getElementById('tc-color-bg2').value,
+    primary:document.getElementById('tc-color-primary').value,
+    audio:document.getElementById('tc-color-audio').value,
+    text:document.getElementById('tc-color-text').value,
+  };
+  updateCustomPreviewSwatch(c);
+  applyCustomTheme(c);
+}
+
+async function saveCustomColors(){
+  const c={
+    bg:document.getElementById('tc-color-bg').value,
+    bg2:document.getElementById('tc-color-bg2').value,
+    primary:document.getElementById('tc-color-primary').value,
+    audio:document.getElementById('tc-color-audio').value,
+    text:document.getElementById('tc-color-text').value,
+  };
+  cfg.preferences=cfg.preferences||{};
+  cfg.preferences.theme_custom=c;
+  applyCustomTheme(c);
+  await api('/api/config','POST',{preferences:{theme_custom:c}});
+  toast('Custom theme saved.');
+}
+
+async function savePref(key,val){
+  cfg.preferences=cfg.preferences||{};
+  cfg.preferences[key]=val;
+  await api('/api/config','POST',{preferences:{[key]:val}});
+}
 function tCol(tag,alpha){let h=0;for(const c of tag)h=(h*31+c.charCodeAt(0))&0xffffffff;const p=[[218,165,32],[201,40,29],[99,182,207],[124,182,124],[182,106,182],[207,142,78],[91,141,217],[217,136,91],[110,184,168]];const[r,g,b]=p[Math.abs(h)%p.length];return`rgba(${r},${g},${b},${alpha})`;}
 function prand(seed){let h=0;for(const c of String(seed))h=(h*31+c.charCodeAt(0))&0x7fffffff;return(h%100)/100;}
 function relDate(ts){const d=Date.now()-ts,m=Math.floor(d/60000);if(m<60)return m<=1?'just now':m+'m ago';const hr=Math.floor(m/60);if(hr<24)return hr+'h ago';const dy=Math.floor(hr/24);if(dy<7)return dy+'d ago';return new Date(ts).toLocaleDateString('en-GB',{day:'numeric',month:'short'});}

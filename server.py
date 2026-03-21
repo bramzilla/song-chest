@@ -309,6 +309,8 @@ def update_config():
     for k in ("audio_folder", "lyrics_folder"):
         if body.get(k):
             CONFIG[k] = str(Path(body[k]).expanduser().resolve())
+    if "preferences" in body:
+        CONFIG.setdefault("preferences", {}).update(body["preferences"])
     if "integrations" in body:
         intg = body["integrations"]
         obs = intg.get("obsidian", {})
@@ -687,6 +689,11 @@ def empty_trash():
     count = len(data.get("trash", []))
     data["trash"] = []
     save_data(data); return jsonify({"ok": True, "removed": count})
+
+@app.route("/api/activity")
+def get_activity():
+    data = load_data()
+    return jsonify(data.get("activity", []))
 
 @app.route("/api/ideas/<iid>/notes", methods=["PATCH"])
 def patch_notes(iid):
