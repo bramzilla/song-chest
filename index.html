@@ -264,7 +264,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:13p
 .coming-tile-body{padding:8px 13px 10px;display:flex;flex-direction:column;gap:4px}
 .ct-row{display:flex;align-items:center;gap:8px;padding:4px 0}
 .ct-dot{width:6px;height:6px;border-radius:50%;background:var(--border-strong);flex-shrink:0}
-.ct-label{font-family:'Fraunces',serif;font-size:11px;color:var(--text-dim);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ct-label{font-family:'Fraunces',serif;font-size:11px;color:var(--text-dim);flex:1;line-height:1.4}
 .ct-meta{font-size:10px;color:var(--text-faint);white-space:nowrap}
 .ct-empty{font-size:11px;color:var(--text-faint);padding:6px 0;line-height:1.6}
 /* sync banner */
@@ -1850,9 +1850,11 @@ function openInsights(){
   document.getElementById('insights-modal').classList.add('open');
 }
 
-function renderActivityTile(){
-  const activity=(db.activity||[]).slice(0,50);
+async function renderActivityTile(){
   const el=document.getElementById('ct-activity');
+  let activity;
+  try{ activity=(await api('/api/activity')).slice(0,50); }
+  catch(e){ activity=(db.activity||[]).slice(0,50); }
   if(!activity.length){
     el.innerHTML='<div style="font-size:11px;color:var(--text-faint);padding:4px 0">No activity yet. Changes you make will appear here.</div>';
     return;

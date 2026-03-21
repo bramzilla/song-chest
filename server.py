@@ -688,6 +688,11 @@ def empty_trash():
     data["trash"] = []
     save_data(data); return jsonify({"ok": True, "removed": count})
 
+@app.route("/api/activity")
+def get_activity():
+    data = load_data()
+    return jsonify(data.get("activity", []))
+
 @app.route("/api/ideas/<iid>/notes", methods=["PATCH"])
 def patch_notes(iid):
     data = load_data()
