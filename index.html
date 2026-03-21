@@ -625,18 +625,12 @@ header{display:flex;align-items:center;justify-content:space-between;padding:13p
       <div class="mseclabel" style="margin:14px 0 8px">Top Tags</div>
       <div class="insight-section" id="ins-tag-list"></div>
       <div class="coming-row">
-        <div class="coming-tile">
+        <div class="coming-tile" style="opacity:1">
           <div class="coming-tile-head">
             <span class="coming-tile-icon">🕐</span>
             <span class="coming-tile-title">Activity Feed</span>
-            <span class="coming-soon-badge">soon</span>
           </div>
-          <div class="coming-tile-body" id="ct-activity">
-            <div class="ct-row"><div class="ct-dot" style="background:var(--teal)"></div><div class="ct-label">Added tag "hook" to verse sketch</div><div class="ct-meta">2m ago</div></div>
-            <div class="ct-row"><div class="ct-dot" style="background:var(--gold)"></div><div class="ct-label">Created "bridge melody"</div><div class="ct-meta">1h ago</div></div>
-            <div class="ct-row"><div class="ct-dot" style="background:var(--text-faint)"></div><div class="ct-label">Assigned "rough take 3" to Summer EP</div><div class="ct-meta">3h ago</div></div>
-            <div class="ct-row"><div class="ct-dot" style="background:var(--gold)"></div><div class="ct-label">Edited notes on "chorus draft"</div><div class="ct-meta">yesterday</div></div>
-          </div>
+          <div class="coming-tile-body" id="ct-activity" style="max-height:180px;overflow-y:auto"></div>
         </div>
         <div class="coming-tile" style="opacity:1">
           <div class="coming-tile-head">
@@ -1849,10 +1843,49 @@ function openInsights(){
     ?topTags.map(([tag,cnt])=>`<div class="insight-row"><div class="ir-name" style="color:${tCol(tag,1)}">${esc(tag)}</div><div class="ir-bar-wrap"><div class="ir-bar" style="width:${Math.round(cnt/maxT*100)}%;background:${tCol(tag,0.6)}"></div></div><div class="ir-count">${cnt}</div></div>`).join('')
     :'<div style="color:var(--text-faint);font-size:12px">No tags yet.</div>';
 
-  // trash
+  // activity + trash
+  renderActivityTile();
   renderTrashTile();
 
   document.getElementById('insights-modal').classList.add('open');
+}
+
+function renderActivityTile(){
+  const activity=(db.activity||[]).slice(0,50);
+  const el=document.getElementById('ct-activity');
+  if(!activity.length){
+    el.innerHTML='<div style="font-size:11px;color:var(--text-faint);padding:4px 0">No activity yet. Changes you make will appear here.</div>';
+    return;
+  }
+  const kindMeta={
+    created: {dot:'var(--teal)',    verb:'Created'},
+    updated: {dot:'var(--text-faint)', verb:'Updated'},
+    deleted: {dot:'var(--crimson)', verb:'Deleted'},
+    restored:{dot:'var(--teal)',    verb:'Restored'},
+    moved:   {dot:'var(--gold)',    verb:'Assigned'},
+    tagged:  {dot:'var(--teal)',    verb:'Tagged'},
+    status:  {dot:'var(--gold)',    verb:'Status →'},
+    starred: {dot:'var(--gold)',    verb:''},
+    notes:   {dot:'var(--text-faint)', verb:'Edited notes on'},
+  };
+  el.innerHTML=activity.map(e=>{
+    const m=kindMeta[e.kind]||{dot:'var(--text-faint)',verb:'Updated'};
+    const title=esc((e.title||'').slice(0,36));
+    let label;
+    if(e.kind==='created')   label=`Created <em>${title}</em>`;
+    else if(e.kind==='moved') label=`Assigned <em>${title}</em> to ${esc(e.detail||'Unassigned')}`;
+    else if(e.kind==='tagged'){
+      const plus=e.detail&&e.detail.startsWith('+');
+      label=`${plus?'Added tag':'Removed tag'} <em>${esc((e.detail||'').slice(1))}</em> on ${title}`;
+    }
+    else if(e.kind==='status') label=`Set <em>${title}</em> to ${esc(e.detail||'')}`;
+    else if(e.kind==='starred') label=`${e.detail==='starred'?'Starred':'Unstarred'} <em>${title}</em>`;
+    else if(e.kind==='notes')  label=`Edited notes on <em>${title}</em>`;
+    else if(e.kind==='deleted') label=`Deleted <em>${title}</em>`;
+    else if(e.kind==='restored') label=`Restored <em>${title}</em>`;
+    else label=`Updated <em>${title}</em>`;
+    return `<div class="ct-row"><div class="ct-dot" style="background:${m.dot}"></div><div class="ct-label">${label}</div><div class="ct-meta">${relDate(e.ts)}</div></div>`;
+  }).join('');
 }
 
 function renderTrashTile(){

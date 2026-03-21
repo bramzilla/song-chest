@@ -192,6 +192,21 @@ def save_data(data):
 def new_id():  return str(uuid.uuid4())[:8]
 def now_ms():  return int(time.time() * 1000)
 
+_ACTIVITY_CAP = 500
+
+def append_activity(data, kind, idea, detail=None):
+    """Append one activity entry; keep only the most recent _ACTIVITY_CAP."""
+    entry = {
+        "id":       new_id(),
+        "ts":       now_ms(),
+        "kind":     kind,          # created|updated|deleted|restored|moved|tagged|status|starred|notes
+        "idea_id":  idea["id"],
+        "title":    idea["title"],
+    }
+    if detail: entry["detail"] = detail
+    data.setdefault("activity", []).insert(0, entry)
+    data["activity"] = data["activity"][:_ACTIVITY_CAP]
+
 # ── filesystem helpers ────────────────────────────────────────
 
 def scan_files():
@@ -581,6 +596,7 @@ def create_idea():
         other = next((x for x in data["ideas"] if x["id"]==lid), None)
         if other and idea["id"] not in other["links"]: other["links"].append(idea["id"])
     data["ideas"].insert(0, idea)
+    append_activity(data, "created", idea)
     save_data(data); return jsonify(idea), 201
 
 @app.route("/api/ideas/<iid>", methods=["PUT"])
@@ -588,7 +604,12 @@ def update_idea(iid):
     data = load_data()
     idea = next((x for x in data["ideas"] if x["id"]==iid), None)
     if not idea: abort(404)
-    old_links = set(idea.get("links",[]))
+    old_links  = set(idea.get("links",[]))
+    old_proj   = idea.get("project")
+    old_tags   = set(idea.get("tags",[]))
+    old_status = idea.get("status","draft")
+    old_starred= idea.get("starred", False)
+    old_notes  = idea.get("notes","")
     body = request.json
     for k in ("type","title","content","audiofile","lyricfile","project","tags","links","notes","status","starred"):
         if k in body: idea[k] = body[k]
@@ -603,6 +624,24 @@ def update_idea(iid):
     for lid in old_links-new_links:
         other = next((x for x in data["ideas"] if x["id"]==lid), None)
         if other: other["links"] = [l for l in other["links"] if l!=iid]
+    # activity logging — one entry per meaningful change
+    if idea.get("project") != old_proj:
+        proj_names = {p["id"]: p["name"] for p in data.get("projects",[])}
+        dest = proj_names.get(idea["project"], "Unassigned") if idea["project"] else "Unassigned"
+        append_activity(data, "moved", idea, dest)
+    elif set(idea.get("tags",[])) != old_tags:
+        added   = set(idea.get("tags",[])) - old_tags
+        removed = old_tags - set(idea.get("tags",[]))
+        if added:   append_activity(data, "tagged",   idea, f'+{", ".join(sorted(added))}')
+        if removed: append_activity(data, "tagged",   idea, f'-{", ".join(sorted(removed))}')
+    elif idea.get("status","draft") != old_status:
+        append_activity(data, "status", idea, idea.get("status","draft"))
+    elif idea.get("starred", False) != old_starred:
+        append_activity(data, "starred", idea, "starred" if idea.get("starred") else "unstarred")
+    elif idea.get("notes","") != old_notes:
+        append_activity(data, "notes", idea)
+    else:
+        append_activity(data, "updated", idea)
     save_data(data); return jsonify(idea)
 
 @app.route("/api/ideas/<iid>", methods=["DELETE"])
@@ -616,6 +655,7 @@ def delete_idea(iid):
     data["obsidian_links"] = [l for l in data.get("obsidian_links", []) if l["idea_id"] != iid]
     idea["deleted_at"] = now_ms()
     data.setdefault("trash", []).insert(0, idea)
+    append_activity(data, "deleted", idea)
     save_data(data); return jsonify({"ok": True})
 
 @app.route("/api/trash")
@@ -632,6 +672,7 @@ def restore_idea(iid):
     idea.pop("deleted_at", None)
     idea["updated"] = now_ms()
     data["ideas"].insert(0, idea)
+    append_activity(data, "restored", idea)
     save_data(data); return jsonify(idea)
 
 @app.route("/api/trash/<iid>", methods=["DELETE"])
@@ -654,6 +695,7 @@ def patch_notes(iid):
     if not idea: abort(404)
     idea["notes"] = request.json.get("notes","")
     idea["updated"] = now_ms()
+    append_activity(data, "notes", idea)
     save_data(data); return jsonify({"ok":True})
 
 # ── move: preview ─────────────────────────────────────────────
@@ -710,6 +752,9 @@ def execute_move():
                  "to_project":body.get("target_project_id"),
                  "moves":executed,"undone":False}
         data["move_history"].append(entry)
+        proj_names = {p["id"]: p["name"] for p in data.get("projects",[])}
+        dest = proj_names.get(idea["project"], "Unassigned") if idea["project"] else "Unassigned"
+        append_activity(data, "moved", idea, dest)
         save_data(data)
         return jsonify({"ok":True,"history_id":entry["id"],"idea":idea})
     except Exception as e:
