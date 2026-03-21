@@ -332,7 +332,6 @@ header{display:flex;align-items:center;justify-content:space-between;padding:13p
       <div class="nav-item" id="tf-lyric" onclick="setFilter('type','lyric')"><div class="nav-dot" style="background:var(--gold)"></div><div class="nav-name" style="font-family:'DM Mono',monospace;font-size:12px">Lyrics</div></div>
       <div class="nav-item" id="tf-audio" onclick="setFilter('type','audio')"><div class="nav-dot" style="background:var(--teal)"></div><div class="nav-name" style="font-family:'DM Mono',monospace;font-size:12px">Audio</div></div>
     </div>
-    <div class="sidebar-section" style="flex:1"><div class="slabel">Tags</div><div class="tag-cloud" id="sidebar-tags"></div></div>
     <div class="sidebar-section" id="integrations-section" style="display:none">
       <div class="slabel">Integrations</div>
       <div class="nav-item" id="nav-obsidian" onclick="setFilter('project','obsidian')">
@@ -341,6 +340,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:13p
         <div class="nav-count" id="cnt-obsidian">—</div>
       </div>
     </div>
+    <div class="sidebar-section" style="flex:1"><div class="slabel">Tags</div><div class="tag-cloud" id="sidebar-tags"></div></div>
   </aside>
 
   <main class="main-area">
@@ -609,6 +609,24 @@ header{display:flex;align-items:center;justify-content:space-between;padding:13p
   </div>
 </div>
 
+<!-- OBSIDIAN NOTE MODAL -->
+<div class="modal-overlay" id="obs-modal">
+  <div class="modal wide">
+    <div class="mhdr">
+      <div style="flex:1"><div class="mtypelabel" style="color:#7B68EE">✦ Obsidian Note</div><div class="mtitle" id="obs-modal-title"></div></div>
+      <button class="close-btn" onclick="closeModal('obs-modal')">✕</button>
+    </div>
+    <div class="mbody">
+      <div class="msec" id="obs-modal-tags"></div>
+      <div class="msec" id="obs-modal-content"></div>
+    </div>
+    <div class="mfooter">
+      <button class="btn sm" onclick="closeModal('obs-modal')">Close</button>
+      <button class="btn sm" id="obs-modal-open-btn" style="border-color:#7B68EE;color:#7B68EE">Open in Obsidian ↗</button>
+    </div>
+  </div>
+</div>
+
 <div class="bulk-bar" id="bulk-bar">
   <span id="bulk-count" style="font-size:12px;color:var(--text-dim);flex:1">0 selected</span>
   <select class="filter-sel" id="bulk-proj-sel" onchange="bulkAssignProject(this.value);this.selectedIndex=0">
@@ -774,7 +792,7 @@ function renderObsCard(note){
   const tagHtml=(note.tags||[]).slice(0,3).map(t=>`<span class="tag" style="background:${tCol(t,.13)};color:${tCol(t,1)}">${esc(t)}</span>`).join('');
   const extra=(note.tags||[]).length>3?`<span style="font-size:10px;color:var(--text-faint)">+${note.tags.length-3}</span>`:'';
   const preview=note.preview?`<div class="card-preview">${esc(note.preview)}</div>`:`<div class="card-preview"><span style="color:var(--text-faint);font-style:italic">no preview</span></div>`;
-  return `<div class="idea-card${linked?' linked-hl':''} fi" onclick="window.location.href=${JSON.stringify(note.obsidian_uri)}">
+  return `<div class="idea-card${linked?' linked-hl':''} fi" onclick="openObsNote('${note.id}')">
     <div class="card-bar" style="background:#7B68EE"></div>
     <div class="card-header"><div class="card-title">${esc(note.title)}</div><div class="card-badge" style="background:rgba(123,104,238,.15);color:#7B68EE">✦ note</div></div>
     <div class="card-body">${preview}</div>
@@ -785,7 +803,7 @@ function renderObsCard(note){
 function renderObsListItem(note){
   const linked=(db.obsidian_links||[]).some(l=>l.note_id===note.id);
   const tagHtml=(note.tags||[]).slice(0,3).map(t=>`<span class="tag" style="background:${tCol(t,.12)};color:${tCol(t,1)}">${esc(t)}</span>`).join('');
-  return `<div class="list-item${linked?' linked-hl':''} fi" onclick="window.location.href=${JSON.stringify(note.obsidian_uri)}">
+  return `<div class="list-item${linked?' linked-hl':''} fi" onclick="openObsNote('${note.id}')">`
     <div class="list-dot" style="background:#7B68EE"></div>
     <div class="list-title">${esc(note.title)}</div>
     <div class="list-preview">${esc((note.preview||'').replace(/\n/g,' · ').slice(0,80))||'<span style="font-style:italic;color:var(--text-faint)">no preview</span>'}</div>
@@ -1383,6 +1401,26 @@ async function loadObsidianStatus(){
   }catch(e){el.className='obs-status bad';el.textContent='Error checking status';}
 }
 
+async function openObsNote(noteId){
+  const note=(obsNotes||[]).find(n=>n.id===noteId);
+  if(!note)return;
+  document.getElementById('obs-modal-title').textContent=note.title;
+  document.getElementById('obs-modal-tags').innerHTML=(note.tags||[]).map(t=>`<span class="tag" style="background:${tCol(t,.15)};color:${tCol(t,1)};padding:3px 9px;border-radius:20px">${esc(t)}</span>`).join('')||'<span style="font-size:11px;color:var(--text-faint)">No tags</span>';
+  document.getElementById('obs-modal-open-btn').onclick=()=>{window.location.href=note.obsidian_uri;};
+  document.getElementById('obs-modal-content').innerHTML='<div style="color:var(--text-faint);font-size:12px;padding:8px 0">Loading…</div>';
+  document.getElementById('obs-modal').classList.add('open');
+  try{
+    const r=await fetch('/api/obsidian/note-content?'+new URLSearchParams({path:note.vault_relative_path}));
+    if(!r.ok)throw new Error('not found');
+    const text=await r.text();
+    const hideFm=localStorage.getItem('pref_hide_frontmatter')==='1';
+    const src=hideFm?stripFrontmatter(text):text;
+    document.getElementById('obs-modal-content').innerHTML=`<div class="lyric-display md-rendered">${renderMarkdown(src)}</div>`;
+  }catch(e){
+    document.getElementById('obs-modal-content').innerHTML='<div style="color:var(--crimson);font-size:12px">Could not load note content.</div>';
+  }
+}
+
 async function browseVaultFolder(){
   try{
     const res=await api('/api/browse-folder','POST',{title:'Select Obsidian Vault Folder'});
@@ -1733,7 +1771,7 @@ document.addEventListener('keydown',function(e){
   if(e.key==='Escape'){
     if(ui.bulkMode){exitBulkMode();return;}
     if(document.getElementById('lyric-focus').classList.contains('open')){closeLyricFocus();return;}
-    const modals=['edit-modal','view-modal','move-modal','project-modal','settings-modal','insights-modal','history-modal'];
+    const modals=['edit-modal','view-modal','obs-modal','move-modal','project-modal','settings-modal','insights-modal','history-modal'];
     for(const id of modals){const m=document.getElementById(id);if(m&&m.classList.contains('open')){closeModal(id);return;}}
   }
 
