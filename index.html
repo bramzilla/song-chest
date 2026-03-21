@@ -618,6 +618,10 @@ header{display:flex;align-items:center;justify-content:space-between;padding:13p
     </div>
     <div class="mbody">
       <div class="msec" id="obs-modal-tags"></div>
+      <div class="msec" id="obs-modal-linked" style="display:none">
+        <div class="slabel" style="font-size:10px;letter-spacing:.08em;color:var(--text-faint);margin-bottom:6px">LINKED IDEAS</div>
+        <div id="obs-modal-linked-list"></div>
+      </div>
       <div class="msec" id="obs-modal-content"></div>
     </div>
     <div class="mfooter">
@@ -667,6 +671,13 @@ async function loadAll(){
   [db,cfg,files]=await Promise.all([api('/api/data'),api('/api/config'),api('/api/scan')]);
   obsNotes=null; // vault may have changed since last scan
   render();
+  // Pre-fetch note count in background so the sidebar badge is populated on load
+  if(cfg.integrations?.obsidian?.enabled){
+    ensureObsNotes().then(notes=>{
+      const el=document.getElementById('cnt-obsidian');
+      if(el)el.textContent=notes.length;
+    });
+  }
 }
 
 // ── audio ─────────────────────────────────────────────────────
@@ -803,7 +814,7 @@ function renderObsCard(note){
 function renderObsListItem(note){
   const linked=(db.obsidian_links||[]).some(l=>l.note_id===note.id);
   const tagHtml=(note.tags||[]).slice(0,3).map(t=>`<span class="tag" style="background:${tCol(t,.12)};color:${tCol(t,1)}">${esc(t)}</span>`).join('');
-  return `<div class="list-item${linked?' linked-hl':''} fi" onclick="openObsNote('${note.id}')">`
+  return `<div class="list-item${linked?' linked-hl':''} fi" onclick="openObsNote('${note.id}')">
     <div class="list-dot" style="background:#7B68EE"></div>
     <div class="list-title">${esc(note.title)}</div>
     <div class="list-preview">${esc((note.preview||'').replace(/\n/g,' · ').slice(0,80))||'<span style="font-style:italic;color:var(--text-faint)">no preview</span>'}</div>
@@ -1408,6 +1419,30 @@ async function openObsNote(noteId){
   document.getElementById('obs-modal-tags').innerHTML=(note.tags||[]).map(t=>`<span class="tag" style="background:${tCol(t,.15)};color:${tCol(t,1)};padding:3px 9px;border-radius:20px">${esc(t)}</span>`).join('')||'<span style="font-size:11px;color:var(--text-faint)">No tags</span>';
   document.getElementById('obs-modal-open-btn').onclick=()=>{window.location.href=note.obsidian_uri;};
   document.getElementById('obs-modal-content').innerHTML='<div style="color:var(--text-faint);font-size:12px;padding:8px 0">Loading…</div>';
+  // Show linked Song Chest ideas
+  const linkedSec=document.getElementById('obs-modal-linked');
+  const linkedList=document.getElementById('obs-modal-linked-list');
+  const linkedIds=(db.obsidian_links||[]).filter(l=>l.note_id===noteId).map(l=>l.idea_id);
+  const linkedIdeas=linkedIds.map(id=>(db.ideas||[]).find(i=>i.id===id)).filter(Boolean);
+  if(linkedIdeas.length){
+    linkedSec.style.display='';
+    linkedList.innerHTML=linkedIdeas.map(idea=>{
+      const proj=idea.project?(db.projects||[]).find(p=>p.id===idea.project):null;
+      const icon=idea.type==='audio'?'♪':'✎';
+      const typeColor=idea.type==='audio'?'var(--color-teal)':'var(--color-crimson)';
+      const projDot=proj?`<span class="nav-dot" style="background:${proj.color};width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:4px"></span><span style="font-size:10px;color:var(--text-faint)">${esc(proj.name)}</span>`:'<span style="font-size:10px;color:var(--text-faint)">Unassigned</span>';
+      return `<div class="obs-linked-idea fi" onclick="closeModal('obs-modal');openViewModal('${idea.id}')" style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;cursor:pointer;border:1px solid var(--border);margin-bottom:4px;background:var(--surface2)">
+        <span style="color:${typeColor};font-size:14px;width:16px;text-align:center">${icon}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(idea.title)}</div>
+          <div style="display:flex;align-items:center;gap:4px;margin-top:2px">${projDot}</div>
+        </div>
+        <span style="font-size:10px;color:var(--text-faint)">↗</span>
+      </div>`;
+    }).join('');
+  } else {
+    linkedSec.style.display='none';
+  }
   document.getElementById('obs-modal').classList.add('open');
   try{
     const r=await fetch('/api/obsidian/note-content?'+new URLSearchParams({path:note.vault_relative_path}));
