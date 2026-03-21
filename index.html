@@ -483,6 +483,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:13p
         </div>
         <input class="path-input" id="s-lyrics-input" placeholder="Or type / paste full path…" onblur="pathTyped('lyrics')">
       </div>
+      <div style="margin-top:8px"><button class="btn sm teal" onclick="savePaths()">Save Paths</button></div>
       <div id="s-msg" style="font-size:11px;color:var(--text-faint);margin-top:6px"></div>
       <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
         <div class="mseclabel" style="margin-bottom:5px">Data</div>
@@ -518,7 +519,10 @@ header{display:flex;align-items:center;justify-content:space-between;padding:13p
         <div id="obs-fields" class="obs-fields" style="display:none">
           <div>
             <label class="flabel" style="margin-bottom:4px">Vault Path</label>
-            <input class="path-input" id="obs-vault-path" placeholder="/Users/you/Documents/MyVault">
+            <div style="display:flex;gap:6px;align-items:center">
+              <input class="path-input" id="obs-vault-path" placeholder="/Users/you/Documents/MyVault" style="flex:1;margin-top:0">
+              <button class="btn sm" style="white-space:nowrap;flex-shrink:0" onclick="browseVaultFolder()">Browse…</button>
+            </div>
           </div>
           <div>
             <label class="flabel" style="margin-bottom:4px">Vault Name <span style="color:var(--text-faint)">(as shown in Obsidian)</span></label>
@@ -537,7 +541,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:13p
         <div id="obs-status" class="obs-status" style="display:none"></div>
       </div>
     </div>
-    <div class="mfooter"><button class="btn sm" onclick="closeModal('settings-modal')">Cancel</button><button class="btn sm primary" onclick="savePaths()">Save Paths</button></div>
+    <div class="mfooter"><button class="btn sm primary" onclick="closeModal('settings-modal')">Done</button></div>
   </div>
 </div>
 
@@ -1311,6 +1315,15 @@ async function loadObsidianStatus(){
       el.style.display='none';
     }
   }catch(e){el.className='obs-status bad';el.textContent='Error checking status';}
+}
+
+async function browseVaultFolder(){
+  try{
+    const res=await api('/api/browse-folder','POST',{title:'Select Obsidian Vault Folder'});
+    if(res.path){
+      document.getElementById('obs-vault-path').value=res.path;
+    }
+  }catch(e){toast('Could not open folder picker.');}
 }
 
 async function saveObsidianSettings(){

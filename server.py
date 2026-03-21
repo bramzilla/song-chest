@@ -424,6 +424,33 @@ def scan_obsidian_vault(cfg):
     _walk(vault_path, 0)
     return results
 
+@app.route("/api/browse-folder", methods=["POST"])
+def browse_folder():
+    """Open a native folder-picker dialog and return the selected path."""
+    title = (request.json or {}).get("title", "Select Folder")
+    import subprocess
+    try:
+        # macOS: AppleScript is always available, no extra deps
+        script = f'POSIX path of (choose folder with prompt "{title}")'
+        r = subprocess.run(["osascript", "-e", script],
+                           capture_output=True, text=True, timeout=120)
+        if r.returncode == 0:
+            return jsonify({"path": r.stdout.strip().rstrip("/")})
+        return jsonify({"path": None})
+    except FileNotFoundError:
+        # osascript not available (non-macOS) — fall back to tkinter
+        try:
+            import tkinter as tk
+            from tkinter import filedialog
+            root = tk.Tk(); root.withdraw(); root.attributes("-topmost", True)
+            path = filedialog.askdirectory(title=title)
+            root.destroy()
+            return jsonify({"path": path or None})
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+    except subprocess.TimeoutExpired:
+        return jsonify({"path": None})
+
 @app.route("/api/obsidian/notes")
 def obsidian_notes():
     return jsonify(scan_obsidian_vault(CONFIG))
