@@ -299,9 +299,13 @@ def update_config():
         if obs.get("enabled") and not obs.get("vault_path", "").strip():
             return jsonify({"error": "vault_path is required when Obsidian integration is enabled"}), 400
         CONFIG.setdefault("integrations", {})
-        # Merge integrations sub-keys rather than replacing whole block
+        # Deep-merge obsidian sub-object to preserve keys the client doesn't send (e.g. preview_length)
+        if "obsidian" in intg:
+            existing = CONFIG["integrations"].setdefault("obsidian", {})
+            existing.update(intg["obsidian"])
         for k, v in intg.items():
-            CONFIG["integrations"][k] = v
+            if k != "obsidian":
+                CONFIG["integrations"][k] = v
         # Normalize vault_path
         vp = CONFIG["integrations"].get("obsidian", {}).get("vault_path", "")
         if vp:
@@ -376,8 +380,11 @@ def scan_obsidian_vault(cfg):
                     vault_rel = str(entry.relative_to(vault_path))
 
                     # Folder check before file I/O for speed
+                    # Use path-boundary-aware prefix to avoid "Song" matching "Song Ideas/"
                     folder_match = bool(filter_folders and any(
-                        vault_rel.startswith(f) for f in filter_folders
+                        vault_rel == f.rstrip("/") or
+                        vault_rel.startswith(f.rstrip("/") + "/")
+                        for f in filter_folders
                     ))
 
                     # Short-circuit: folder filter active, no folder match, and no tag filter
@@ -553,6 +560,7 @@ def delete_idea(iid):
     data = load_data()
     data["ideas"] = [x for x in data["ideas"] if x["id"]!=iid]
     for idea in data["ideas"]: idea["links"] = [l for l in idea["links"] if l!=iid]
+    data["obsidian_links"] = [l for l in data.get("obsidian_links",[]) if l["idea_id"]!=iid]
     save_data(data); return jsonify({"ok":True})
 
 @app.route("/api/ideas/<iid>/notes", methods=["PATCH"])
