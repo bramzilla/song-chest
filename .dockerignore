@@ -1,0 +1,17 @@
+venv/
+build/
+dist/
+__pycache__/
+*.pyc
+*.spec
+*.sh
+.git/
+.gitignore
+config.json
+data.json
+audio/
+lyrics/
+launcher.py
+test_api.py
+CLAUDE.md
+README.md

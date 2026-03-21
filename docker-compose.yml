@@ -1,0 +1,12 @@
+services:
+  song-chest:
+    build: .
+    ports:
+      - "5000:5000"
+    # By default the container starts with fresh demo data on every run.
+    # To persist changes between restarts, uncomment the lines below:
+    # volumes:
+    #   - songchest-data:/app/data.json
+
+# volumes:
+#   songchest-data:

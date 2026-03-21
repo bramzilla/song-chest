@@ -1,0 +1,253 @@
+{
+  "projects": [
+    {
+      "id": "a1b2c3d4",
+      "name": "Summer Demos",
+      "type": "EP",
+      "color": "#DAA520",
+      "folder": "summer-demos",
+      "created": 1700000000000
+    },
+    {
+      "id": "b2c3d4e5",
+      "name": "Hotel Songs",
+      "type": "Album",
+      "color": "#63B6CF",
+      "folder": "hotel-songs",
+      "created": 1700100000000
+    },
+    {
+      "id": "c3d4e5f6",
+      "name": "Live at Studio B",
+      "type": "Single",
+      "color": "#C9281D",
+      "folder": "live-at-studio-b",
+      "created": 1700200000000
+    }
+  ],
+  "ideas": [
+    {
+      "id": "i1a2b3c4",
+      "type": "lyric",
+      "title": "Sun coming through the blinds",
+      "content": "Sun coming through the blinds at seven\nMakes a ladder on the floor\nI've been lying here since heaven\nKnows what time, an hour or more\n\nThere's a word for what I'm feeling\nBut it lives behind my teeth\nSo I let the light keep dealing\nWith the things that I can't reach",
+      "audiofile": "",
+      "lyricfile": "",
+      "project": "a1b2c3d4",
+      "tags": ["verse", "morning", "imagery"],
+      "links": ["i3c4d5e6"],
+      "notes": "Woke up with this at 6am. The 'ladder on the floor' image feels strong — keep it.",
+      "status": "in-progress",
+      "starred": true,
+      "created": 1700300000000,
+      "updated": 1700400000000
+    },
+    {
+      "id": "i2b3c4d5",
+      "type": "audio",
+      "title": "Hotel lobby piano loop",
+      "content": "",
+      "audiofile": "",
+      "lyricfile": "",
+      "project": "b2c3d4e5",
+      "tags": ["instrumental", "loop", "piano"],
+      "links": ["i4d5e6f7"],
+      "notes": "Recorded on the upright in the Ace lobby. Slightly out of tune — works in its favour.",
+      "status": "draft",
+      "starred": false,
+      "created": 1700500000000,
+      "updated": 1700500000000
+    },
+    {
+      "id": "i3c4d5e6",
+      "type": "audio",
+      "title": "Chorus melody — summer version",
+      "content": "",
+      "audiofile": "",
+      "lyricfile": "",
+      "project": "a1b2c3d4",
+      "tags": ["chorus", "melody", "hook"],
+      "links": ["i1a2b3c4"],
+      "notes": "Try this over the verse lyrics. The leap on 'reach' is the moment.",
+      "status": "finished",
+      "starred": true,
+      "created": 1700600000000,
+      "updated": 1700700000000
+    },
+    {
+      "id": "i4d5e6f7",
+      "type": "lyric",
+      "title": "How the light falls (hotel room)",
+      "content": "How the light falls through a curtain\nIn a room that isn't mine\nMakes me certain of uncertain\nThings I've left behind the line\n\nEvery city has a version\nOf the person that I was\nChecking in without a reason\nChecking out because",
+      "audiofile": "",
+      "lyricfile": "",
+      "project": "b2c3d4e5",
+      "tags": ["verse", "travel", "imagery"],
+      "links": ["i2b3c4d5"],
+      "notes": "Pairs with the piano loop. Last line intentionally unfinished — let it breathe.",
+      "status": "in-progress",
+      "starred": false,
+      "created": 1700800000000,
+      "updated": 1700900000000
+    },
+    {
+      "id": "i5e6f7g8",
+      "type": "audio",
+      "title": "Guitar riff — descending thing",
+      "content": "",
+      "audiofile": "",
+      "lyricfile": "",
+      "project": null,
+      "tags": ["guitar", "riff", "unassigned"],
+      "links": [],
+      "notes": "No idea where this goes yet. Maybe nothing. Keep it.",
+      "status": "draft",
+      "starred": false,
+      "created": 1701000000000,
+      "updated": 1701000000000
+    },
+    {
+      "id": "i6f7g8h9",
+      "type": "lyric",
+      "title": "Bridge — don't overthink it",
+      "content": "And maybe that's enough\nTo know you tried\nMaybe that's the stuff\nThat keeps you tied\nTo something worth the drive",
+      "audiofile": "",
+      "lyricfile": "",
+      "project": "a1b2c3d4",
+      "tags": ["bridge", "draft"],
+      "links": [],
+      "notes": "Too on-the-nose? Or exactly right. Sleep on it.",
+      "status": "draft",
+      "starred": false,
+      "created": 1701100000000,
+      "updated": 1701100000000
+    },
+    {
+      "id": "i7g8h9i0",
+      "type": "audio",
+      "title": "Full band take — live room",
+      "content": "",
+      "audiofile": "",
+      "lyricfile": "",
+      "project": "c3d4e5f6",
+      "tags": ["live", "full-band", "rough-mix"],
+      "links": [],
+      "notes": "Third take. Drums feel loose in a good way. Mix is rough — don't over-produce.",
+      "status": "finished",
+      "starred": true,
+      "created": 1701200000000,
+      "updated": 1701300000000
+    },
+    {
+      "id": "i8h9i0j1",
+      "type": "lyric",
+      "title": "Leaving song (title TBD)",
+      "content": "I left my coat in a bar in Ghent\nI left my number on a note in Gent\nI left myself somewhere between\nThe person that I am and what I mean\n\nTrains don't wait for second thoughts\nAnd neither do the things I should have brought",
+      "audiofile": "",
+      "lyricfile": "",
+      "project": null,
+      "tags": ["travel", "melancholy", "unassigned"],
+      "links": [],
+      "notes": "Ghent/Gent is the same city in Dutch and French — keep the double spelling, it's the point.",
+      "status": "draft",
+      "starred": false,
+      "created": 1701400000000,
+      "updated": 1701400000000
+    },
+    {
+      "id": "i9i0j1k2",
+      "type": "lyric",
+      "title": "Opener — sets the scene",
+      "content": "We came here with our instruments\nAnd all our good intentions\nWe left them by the door\nFor later\n\nThe room was full of people\nDoing something that resembled\nLiving",
+      "audiofile": "",
+      "lyricfile": "",
+      "project": "b2c3d4e5",
+      "tags": ["opener", "atmosphere"],
+      "links": [],
+      "notes": "Short on purpose. Maybe instrumental follows.",
+      "status": "in-progress",
+      "starred": false,
+      "created": 1701500000000,
+      "updated": 1701600000000
+    }
+  ],
+  "move_history": [],
+  "trash": [],
+  "obsidian_links": [],
+  "activity": [
+    {
+      "id": "act00001",
+      "ts": 1701600000000,
+      "kind": "status",
+      "idea_id": "i9i0j1k2",
+      "title": "Opener — sets the scene",
+      "detail": "in-progress"
+    },
+    {
+      "id": "act00002",
+      "ts": 1701500000000,
+      "kind": "created",
+      "idea_id": "i9i0j1k2",
+      "title": "Opener — sets the scene"
+    },
+    {
+      "id": "act00003",
+      "ts": 1701400000000,
+      "kind": "created",
+      "idea_id": "i8h9i0j1",
+      "title": "Leaving song (title TBD)"
+    },
+    {
+      "id": "act00004",
+      "ts": 1701300000000,
+      "kind": "starred",
+      "idea_id": "i7g8h9i0",
+      "title": "Full band take — live room",
+      "detail": "starred"
+    },
+    {
+      "id": "act00005",
+      "ts": 1701200000000,
+      "kind": "created",
+      "idea_id": "i7g8h9i0",
+      "title": "Full band take — live room"
+    },
+    {
+      "id": "act00006",
+      "ts": 1700900000000,
+      "kind": "notes",
+      "idea_id": "i4d5e6f7",
+      "title": "How the light falls (hotel room)"
+    },
+    {
+      "id": "act00007",
+      "ts": 1700700000000,
+      "kind": "status",
+      "idea_id": "i3c4d5e6",
+      "title": "Chorus melody — summer version",
+      "detail": "finished"
+    },
+    {
+      "id": "act00008",
+      "ts": 1700600000000,
+      "kind": "created",
+      "idea_id": "i3c4d5e6",
+      "title": "Chorus melody — summer version"
+    },
+    {
+      "id": "act00009",
+      "ts": 1700400000000,
+      "kind": "tagged",
+      "idea_id": "i1a2b3c4",
+      "title": "Sun coming through the blinds",
+      "detail": "+morning"
+    },
+    {
+      "id": "act00010",
+      "ts": 1700300000000,
+      "kind": "created",
+      "idea_id": "i1a2b3c4",
+      "title": "Sun coming through the blinds"
+    }
+  ]
+}

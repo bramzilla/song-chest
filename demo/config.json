@@ -1,0 +1,14 @@
+{
+  "audio_folder": "/app/audio",
+  "lyrics_folder": "/app/lyrics",
+  "integrations": {
+    "obsidian": {
+      "enabled": false,
+      "vault_path": "",
+      "vault_name": "",
+      "filter": { "tags": ["song-idea"], "folders": [] },
+      "preview_length": 120
+    }
+  },
+  "preferences": {}
+}
