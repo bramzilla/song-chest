@@ -302,6 +302,26 @@ header{display:flex;align-items:center;justify-content:space-between;padding:13p
 ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:3px}
 @keyframes fi{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 .fi{animation:fi .2s ease forwards}
+/* drag-to-project */
+.idea-card[draggable=true]{cursor:grab}.idea-card[draggable=true]:active{cursor:grabbing}
+.nav-item.drag-target{background:var(--gold-pale);border:1.5px dashed var(--gold);border-radius:4px}
+/* mini-player */
+#mini-player{position:fixed;bottom:0;left:0;right:0;z-index:148;background:var(--bg2);border-top:2px solid var(--teal);padding:8px 16px;display:flex;align-items:center;gap:12px;transform:translateY(100%);transition:transform .2s}
+#mini-player.show{transform:translateY(0)}
+#mini-player.bulk-up{transform:translateY(-53px)}
+#mini-player.show.bulk-up{transform:translateY(-53px)}
+.mp-play{width:30px;height:30px;border-radius:50%;background:var(--teal);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.mp-play svg{fill:var(--bg);width:10px;height:10px}
+.mp-title{font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;margin-bottom:3px}
+.mp-title:hover{color:var(--gold)}
+.mp-bar{display:flex;align-items:center;gap:8px}
+.mp-prog{flex:1;height:3px;background:var(--bg4);border-radius:2px;cursor:pointer;overflow:hidden;min-width:80px}
+.mp-prog-fill{height:100%;background:var(--teal);border-radius:2px;width:0%;transition:width .2s}
+.mp-time{font-size:10px;color:var(--text-faint);white-space:nowrap}
+/* quick-capture */
+#quick-capture{position:fixed;top:50%;left:50%;transform:translate(-50%,-60%);z-index:500;background:var(--bg2);border:1px solid var(--border-strong);border-radius:10px;padding:20px;width:min(420px,90vw);box-shadow:0 20px 60px rgba(0,0,0,.6);display:none}
+#quick-capture.open{display:block}
+.qc-hint{font-size:10px;color:var(--text-faint);margin-top:10px;text-align:center}
 /* bulk select */
 .card-check{position:absolute;top:8px;left:8px;width:18px;height:18px;border-radius:4px;border:1.5px solid var(--border-strong);background:var(--bg3);display:none;align-items:center;justify-content:center;z-index:2;pointer-events:none}
 .canvas.bulk-mode .idea-card .card-check{display:flex}
@@ -339,7 +359,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:13p
         <div class="nav-name">All Ideas</div>
         <div class="nav-count" id="cnt-all">—</div>
       </div>
-      <div class="nav-item" onclick="setFilter('project','unassigned')">
+      <div class="nav-item" id="nav-unassigned" onclick="setFilter('project','unassigned')" ondragover="event.preventDefault();this.classList.add('drag-target')" ondragleave="this.classList.remove('drag-target')" ondrop="this.classList.remove('drag-target');dropOnProject(event,null)">
         <div class="nav-dot" style="background:var(--text-faint);opacity:.4"></div>
         <div class="nav-name">Unassigned</div>
         <div class="nav-count" id="cnt-unassigned">—</div>
@@ -668,6 +688,31 @@ header{display:flex;align-items:center;justify-content:space-between;padding:13p
   </div>
 </div>
 
+<!-- MINI PLAYER -->
+<div id="mini-player">
+  <button class="mp-play" id="mp-play-btn" onclick="mpToggle()"><svg viewBox="0 0 10 12"><polygon points="0,0 10,6 0,12"/></svg></button>
+  <div style="flex:1;min-width:0">
+    <div class="mp-title" id="mp-title" onclick="openPlayingIdea()">—</div>
+    <div class="mp-bar">
+      <div class="mp-prog" id="mp-prog" onclick="mpSeek(event)"><div class="mp-prog-fill" id="mp-fill"></div></div>
+      <span class="mp-time" id="mp-time">0:00</span>
+    </div>
+  </div>
+  <button class="btn sm" style="flex-shrink:0;font-size:10px;padding:2px 8px" onclick="closeMiniPlayer()">✕</button>
+</div>
+
+<!-- QUICK CAPTURE -->
+<div id="quick-capture">
+  <div style="font-size:11px;letter-spacing:1.5px;color:var(--text-faint);text-transform:uppercase;margin-bottom:10px">Quick Capture</div>
+  <div class="type-sel" style="margin-bottom:10px">
+    <button class="type-opt sl" id="qc-lyric" onclick="qcSelType('lyric')">✍ Lyric</button>
+    <button class="type-opt" id="qc-audio" onclick="qcSelType('audio')">♫ Audio</button>
+  </div>
+  <input class="finput" id="qc-title" placeholder="Title…" onkeydown="qcKey(event)" style="width:100%">
+  <div class="qc-hint">Enter to save · Escape to cancel</div>
+</div>
+<div id="qc-backdrop" style="display:none;position:fixed;inset:0;z-index:499" onclick="closeQuickCapture()"></div>
+
 <div class="bulk-bar" id="bulk-bar">
   <span id="bulk-count" style="font-size:12px;color:var(--text-dim);flex:1">0 selected</span>
   <select class="filter-sel" id="bulk-proj-sel" onchange="bulkAssignProject(this.value);this.selectedIndex=0">
@@ -720,12 +765,76 @@ async function loadAll(){
 
 // ── audio ─────────────────────────────────────────────────────
 function getAudio(){if(!ui.audioEl){ui.audioEl=new Audio();ui.audioEl.addEventListener('timeupdate',onTick);ui.audioEl.addEventListener('ended',onEnd);}return ui.audioEl;}
-function onTick(){const a=ui.audioEl;if(!a.duration)return;const pct=(a.currentTime/a.duration)*100;const f=document.getElementById('pf-'+ui.playingId);if(f)f.style.width=pct+'%';const t=document.getElementById('pt-'+ui.playingId);if(t)t.textContent=fmt(a.currentTime)+' / '+fmt(a.duration);const af=document.getElementById('apf-fill');if(af)af.style.width=pct+'%';const at=document.getElementById('apf-time');if(at)at.textContent=fmt(a.currentTime)+' / '+fmt(a.duration);}
-function onEnd(){setPI(ui.playingId,false);ui.playingId=null;}
+function onTick(){
+  const a=ui.audioEl;if(!a.duration)return;
+  const pct=(a.currentTime/a.duration)*100;
+  const cur=fmt(a.currentTime),dur=fmt(a.duration);
+  const f=document.getElementById('pf-'+ui.playingId);if(f)f.style.width=pct+'%';
+  const t=document.getElementById('pt-'+ui.playingId);if(t)t.textContent=cur+' / '+dur;
+  const af=document.getElementById('apf-fill');if(af)af.style.width=pct+'%';
+  const at=document.getElementById('apf-time');if(at)at.textContent=cur+' / '+dur;
+  const mf=document.getElementById('mp-fill');if(mf)mf.style.width=pct+'%';
+  const mt=document.getElementById('mp-time');if(mt)mt.textContent=cur+' / '+dur;
+}
+function onEnd(){setPI(ui.playingId,false);mpSetPaused();ui.playingId=null;}
 function fmt(s){if(!s||isNaN(s))return'0:00';return Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0');}
-function togglePlay(id,e){if(e)e.stopPropagation();const idea=db.ideas.find(i=>i.id===id);if(!idea?.audiofile){toast('No audio file linked.');return;}const a=getAudio();if(ui.playingId===id){a.paused?a.play():a.pause();setPI(id,!a.paused);return;}if(ui.playingId)setPI(ui.playingId,false);const encodedSrc='/audio/'+idea.audiofile.split('/').map(encodeURIComponent).join('/');a.pause();a.onerror=null;const newAudio=new Audio();newAudio.addEventListener('timeupdate',onTick);newAudio.addEventListener('ended',onEnd);ui.audioEl=newAudio;newAudio.onerror=(e)=>{const err=newAudio.error;console.error('Audio error',{code:err?.code,message:err?.message,src:newAudio.src,networkState:newAudio.networkState,readyState:newAudio.readyState});toast('Could not play: '+idea.audiofile);setPI(id,false);ui.playingId=null;document.querySelectorAll('.idea-card').forEach(c=>c.classList.remove('playing-card'));};newAudio.src=encodedSrc;ui.playingId=id;setPI(id,true);newAudio.play().catch(err=>{console.error('play() rejected',{name:err.name,message:err.message,src:newAudio.src});if(err.name!=='AbortError'){toast('Could not play: '+idea.audiofile);setPI(id,false);ui.playingId=null;document.querySelectorAll('.idea-card').forEach(c=>c.classList.remove('playing-card'));}});document.querySelectorAll('.idea-card').forEach(c=>c.classList.remove('playing-card'));const card=document.getElementById('card-'+id);if(card)card.classList.add('playing-card');}
+function togglePlay(id,e){if(e)e.stopPropagation();const idea=db.ideas.find(i=>i.id===id);if(!idea?.audiofile){toast('No audio file linked.');return;}const a=getAudio();if(ui.playingId===id){a.paused?a.play():a.pause();setPI(id,!a.paused);a.paused?mpSetPaused():mpSetPlaying();return;}if(ui.playingId)setPI(ui.playingId,false);const encodedSrc='/audio/'+idea.audiofile.split('/').map(encodeURIComponent).join('/');a.pause();a.onerror=null;const newAudio=new Audio();newAudio.addEventListener('timeupdate',onTick);newAudio.addEventListener('ended',onEnd);ui.audioEl=newAudio;newAudio.onerror=(e)=>{const err=newAudio.error;console.error('Audio error',{code:err?.code,message:err?.message,src:newAudio.src,networkState:newAudio.networkState,readyState:newAudio.readyState});toast('Could not play: '+idea.audiofile);setPI(id,false);ui.playingId=null;document.querySelectorAll('.idea-card').forEach(c=>c.classList.remove('playing-card'));};newAudio.src=encodedSrc;ui.playingId=id;setPI(id,true);showMiniPlayer(id);newAudio.play().catch(err=>{console.error('play() rejected',{name:err.name,message:err.message,src:newAudio.src});if(err.name!=='AbortError'){toast('Could not play: '+idea.audiofile);setPI(id,false);ui.playingId=null;document.querySelectorAll('.idea-card').forEach(c=>c.classList.remove('playing-card'));}});document.querySelectorAll('.idea-card').forEach(c=>c.classList.remove('playing-card'));const card=document.getElementById('card-'+id);if(card)card.classList.add('playing-card');}
 function setPI(id,p){const b=document.getElementById('pb-'+id);if(!b)return;b.innerHTML=p?'<svg viewBox="0 0 10 12"><rect x="0" y="0" width="3" height="12"/><rect x="6" y="0" width="3" height="12"/></svg>':'<svg viewBox="0 0 10 12"><polygon points="0,0 10,6 0,12"/></svg>';}
 function seekAudio(e,id){e.stopPropagation();const a=ui.audioEl;if(!a||ui.playingId!==id)return;a.currentTime=(e.offsetX/e.currentTarget.offsetWidth)*a.duration;}
+
+// ── mini-player ───────────────────────────────────────────────
+function showMiniPlayer(id){
+  const idea=db.ideas.find(i=>i.id===id);
+  document.getElementById('mp-title').textContent=idea?idea.title:'Playing…';
+  document.getElementById('mp-fill').style.width='0%';
+  document.getElementById('mp-time').textContent='0:00';
+  mpSetPlaying();
+  const mp=document.getElementById('mini-player');
+  mp.classList.add('show');
+  if(ui.bulkMode)mp.classList.add('bulk-up');
+}
+function mpSetPlaying(){const b=document.getElementById('mp-play-btn');if(b)b.innerHTML='<svg viewBox="0 0 10 12"><rect x="0" y="0" width="3" height="12"/><rect x="6" y="0" width="3" height="12"/></svg>';}
+function mpSetPaused(){const b=document.getElementById('mp-play-btn');if(b)b.innerHTML='<svg viewBox="0 0 10 12"><polygon points="0,0 10,6 0,12"/></svg>';}
+function mpToggle(){if(ui.playingId)togglePlay(ui.playingId,null);}
+function mpSeek(e){const a=ui.audioEl;if(!a||!a.duration)return;a.currentTime=(e.offsetX/e.currentTarget.offsetWidth)*a.duration;}
+function closeMiniPlayer(){const a=ui.audioEl;if(a){a.pause();}if(ui.playingId){setPI(ui.playingId,false);ui.playingId=null;}document.getElementById('mini-player').classList.remove('show');}
+function openPlayingIdea(){if(ui.playingId){closeModal('view-modal');viewIdea(ui.playingId);document.getElementById('view-modal').classList.add('open');}}
+
+// ── quick capture ─────────────────────────────────────────────
+let qcType='lyric';
+function openQuickCapture(){
+  qcType='lyric';
+  document.getElementById('qc-lyric').className='type-opt sl';
+  document.getElementById('qc-audio').className='type-opt';
+  document.getElementById('qc-title').value='';
+  document.getElementById('quick-capture').classList.add('open');
+  document.getElementById('qc-backdrop').style.display='';
+  setTimeout(()=>document.getElementById('qc-title').focus(),50);
+}
+function closeQuickCapture(){
+  document.getElementById('quick-capture').classList.remove('open');
+  document.getElementById('qc-backdrop').style.display='none';
+}
+function qcSelType(t){
+  qcType=t;
+  document.getElementById('qc-lyric').className='type-opt'+(t==='lyric'?' sl':'');
+  document.getElementById('qc-audio').className='type-opt'+(t==='audio'?' sa':'');
+}
+function qcKey(e){
+  if(e.key==='Enter'){e.preventDefault();saveQuickCapture();}
+  else if(e.key==='Escape'){e.preventDefault();closeQuickCapture();}
+}
+async function saveQuickCapture(){
+  const title=document.getElementById('qc-title').value.trim();
+  if(!title)return;
+  closeQuickCapture();
+  try{
+    const idea=await api('/api/ideas','POST',{type:qcType,title,status:'draft'});
+    db.ideas.unshift(idea);
+    render();
+    toast('Captured: "'+title+'"');
+  }catch(e){toast('Error: '+e.message);}
+}
 
 // ── render ────────────────────────────────────────────────────
 function render(){renderSidebar();renderCanvas();}
@@ -736,7 +845,11 @@ function renderSidebar(){
     const cnt=db.ideas.filter(i=>i.project===p.id).length;
     const d=document.createElement('div');d.className='nav-item'+(ui.pf===p.id?' active':'');
     d.innerHTML=`<div class="nav-dot" style="background:${p.color}"></div><div class="nav-name">${esc(p.name)}</div><div class="nav-count">${cnt}</div>`;
-    d.onclick=()=>setFilter('project',p.id);pl.appendChild(d);
+    d.onclick=()=>setFilter('project',p.id);
+    d.ondragover=e=>{e.preventDefault();d.classList.add('drag-target');};
+    d.ondragleave=()=>d.classList.remove('drag-target');
+    d.ondrop=e=>{e.preventDefault();d.classList.remove('drag-target');dropOnProject(e,p.id);};
+    pl.appendChild(d);
   });
   document.getElementById('all-btn').className='nav-item'+(ui.pf==='all'?' active':'');
   document.getElementById('cnt-all').textContent=db.ideas.length;
@@ -895,7 +1008,7 @@ function renderCard(idea){
   }
   else{const bars=Array.from({length:22},(_,i)=>`<div class="w-bar" style="height:${3+prand(idea.id+i)*18}px"></div>`).join('');body=`<div class="waveform">${bars}</div>`;}
   const audioRow=idea.type==='audio'?`<div class="card-audio-row"><button class="play-mini" id="pb-${idea.id}" onclick="togglePlay('${idea.id}',event)"><svg viewBox="0 0 10 12"><polygon points="0,0 10,6 0,12"/></svg></button><div class="audio-prog" onclick="seekAudio(event,'${idea.id}')"><div class="audio-prog-fill" id="pf-${idea.id}"></div></div><span class="audio-time" id="pt-${idea.id}">—</span></div>`:'';
-  return `<div class="idea-card${linked?' linked-hl':''}${isRaw?' raw':''} fi" id="card-${idea.id}" onclick="cardClick('${idea.id}')">
+  return `<div class="idea-card${linked?' linked-hl':''}${isRaw?' raw':''} fi" id="card-${idea.id}" draggable="true" ondragstart="dragStart(event,'${idea.id}')" onclick="cardClick('${idea.id}')">
     <div class="card-check"></div>
     <div class="card-bar type-${idea.type}"></div>
     <div class="card-header"><div class="card-title">${starHtml}${esc(idea.title)}</div><div class="card-badge badge-${idea.type}">${idea.type==='lyric'?'✍ lyric':'♫ audio'}</div></div>
@@ -1882,6 +1995,22 @@ function setFilter(kind,val){
 function setView(v){ui.view=v;document.getElementById('vb-grid').className='view-btn'+(v==='grid'?' active':'');document.getElementById('vb-list').className='view-btn'+(v==='list'?' active':'');render();}
 function setSearch(v){ui.search=v;render();}
 function setSort(v){ui.sort=v;render();}
+
+// ── drag-to-project ───────────────────────────────────────────
+function dragStart(e,ideaId){e.dataTransfer.setData('text/plain',ideaId);e.dataTransfer.effectAllowed='move';}
+async function dropOnProject(e,targetPid){
+  const ideaId=e.dataTransfer.getData('text/plain');
+  if(!ideaId)return;
+  const idea=db.ideas.find(i=>i.id===ideaId);
+  if(!idea||idea.project===targetPid)return;
+  const proj=targetPid?db.projects.find(p=>p.id===targetPid):null;
+  try{
+    await api('/api/ideas/'+ideaId,'PUT',{...idea,project:targetPid});
+    idea.project=targetPid;
+    render();
+    toast(`"${idea.title.slice(0,28)}" → ${proj?'"'+proj.name+'"':'Unassigned'}`);
+  }catch(err){toast('Error: '+err.message);}
+}
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');}));
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
@@ -1925,6 +2054,7 @@ function toggleBulkMode(){
   const btn=document.getElementById('bulk-toggle');
   if(btn){btn.className='btn sm primary';btn.textContent='✕ Select';}
   document.getElementById('canvas').classList.add('bulk-mode');
+  const mp=document.getElementById('mini-player');if(mp.classList.contains('show'))mp.classList.add('bulk-up');
 }
 function exitBulkMode(){
   if(!ui.bulkMode)return;
@@ -1933,6 +2063,7 @@ function exitBulkMode(){
   const btn=document.getElementById('bulk-toggle');if(btn){btn.className='btn sm';btn.textContent='Select';}
   document.getElementById('canvas').classList.remove('bulk-mode');
   document.getElementById('bulk-bar').classList.remove('show');
+  document.getElementById('mini-player').classList.remove('bulk-up');
   const pop=document.getElementById('bulk-tag-pop');if(pop)pop.style.display='none';
 }
 function cardClick(id){if(!ui.bulkMode){viewIdea(id);return;}toggleSelect(id);}
@@ -2005,8 +2136,11 @@ document.addEventListener('keydown',function(e){
     for(const id of modals){const m=document.getElementById(id);if(m&&m.classList.contains('open')){closeModal(id);return;}}
   }
 
-  // Cmd/Ctrl+N — new idea
+  // Cmd/Ctrl+N — full new idea modal
   if(mod&&e.key==='n'){e.preventDefault();openAddModal('lyric');return;}
+
+  // N (no modifier) — quick capture overlay
+  if(!mod&&!inInput&&e.key==='n'){e.preventDefault();openQuickCapture();return;}
 
   // / — focus search (when not in an input)
   if(e.key==='/'&&!inInput){e.preventDefault();const s=document.getElementById('search-input');if(s){s.focus();s.select();}return;}
