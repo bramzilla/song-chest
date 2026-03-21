@@ -4,7 +4,7 @@ Run: ./start.sh  or  python server.py
 Open: http://localhost:5000
 """
 
-import json, os, shutil, uuid, time, re
+import json, os, shutil, uuid, time, re, hashlib, urllib.parse
 from pathlib import Path
 from flask import Flask, jsonify, request, send_from_directory, send_file, abort
 
@@ -122,15 +122,37 @@ def rtf_to_text(data):
 # ── config ────────────────────────────────────────────────────
 
 def load_config():
+    obs_default = {
+        "enabled": False,
+        "vault_path": "",
+        "vault_name": "",
+        "filter": {"tags": ["song-idea"], "folders": []},
+        "preview_length": 120,
+    }
     defaults = {
         "audio_folder":  str(BASE_DIR / "audio"),
         "lyrics_folder": str(BASE_DIR / "lyrics"),
+        "integrations": {"obsidian": obs_default},
     }
     if CONFIG_FILE.exists():
         with open(CONFIG_FILE, "r", encoding="utf-8") as f:
             cfg = json.load(f)
-        for k in defaults:
+        for k in ("audio_folder", "lyrics_folder"):
             cfg[k] = str(Path(cfg.get(k, defaults[k])).expanduser().resolve())
+        # Deep-merge integrations block so missing keys get defaults
+        ci = cfg.setdefault("integrations", {})
+        co = ci.setdefault("obsidian", {})
+        for k, v in obs_default.items():
+            if k == "filter":
+                cf = co.setdefault("filter", {})
+                for fk, fv in v.items():
+                    cf.setdefault(fk, fv)
+            elif k not in co:
+                co[k] = v
+        # Normalize vault_path with normpath (not resolve) to avoid macOS /var→/private/var symlink issues
+        vp = co.get("vault_path", "")
+        if vp:
+            co["vault_path"] = os.path.normpath(os.path.expanduser(vp))
         return cfg
     save_config(defaults)
     return defaults
@@ -156,8 +178,9 @@ def load_data():
         d.setdefault("projects", [])
         d.setdefault("ideas", [])
         d.setdefault("move_history", [])
+        d.setdefault("obsidian_links", [])
         return d
-    return {"projects": [], "ideas": [], "move_history": []}
+    return {"projects": [], "ideas": [], "move_history": [], "obsidian_links": []}
 
 def save_data(data):
     tmp = DATA_FILE.with_suffix(".tmp")
@@ -270,12 +293,167 @@ def update_config():
     for k in ("audio_folder", "lyrics_folder"):
         if body.get(k):
             CONFIG[k] = str(Path(body[k]).expanduser().resolve())
+    if "integrations" in body:
+        intg = body["integrations"]
+        obs = intg.get("obsidian", {})
+        if obs.get("enabled") and not obs.get("vault_path", "").strip():
+            return jsonify({"error": "vault_path is required when Obsidian integration is enabled"}), 400
+        CONFIG.setdefault("integrations", {})
+        # Merge integrations sub-keys rather than replacing whole block
+        for k, v in intg.items():
+            CONFIG["integrations"][k] = v
+        # Normalize vault_path
+        vp = CONFIG["integrations"].get("obsidian", {}).get("vault_path", "")
+        if vp:
+            CONFIG["integrations"]["obsidian"]["vault_path"] = os.path.normpath(os.path.expanduser(vp))
     save_config(CONFIG)
     audio_dir().mkdir(parents=True, exist_ok=True)
     lyrics_dir().mkdir(parents=True, exist_ok=True)
     return jsonify({**CONFIG,
                     "audio_exists":  audio_dir().exists(),
                     "lyrics_exists": lyrics_dir().exists()})
+
+# ── obsidian integration ──────────────────────────────────────
+
+_OBSIDIAN_SCAN_DEPTH = 3
+
+def _parse_obsidian_frontmatter(text):
+    """Return (tags, title, body) parsed from a markdown file with optional YAML frontmatter."""
+    tags, title, body = [], None, text
+    if text.startswith("---"):
+        end = text.find("\n---", 3)
+        if end != -1:
+            fm = text[3:end].strip()
+            body = text[end + 4:].lstrip("\n")
+            # title
+            m = re.search(r"^title:\s*(.+)$", fm, re.MULTILINE)
+            if m:
+                title = m.group(1).strip().strip("\"'")
+            # tags: [a, b] inline
+            m = re.search(r"^tags:\s*\[(.+)\]", fm, re.MULTILINE)
+            if m:
+                tags = [t.strip().strip("\"'") for t in m.group(1).split(",") if t.strip()]
+            else:
+                # tags:\n  - a\n  - b multiline
+                m = re.search(r"^tags:\s*\n((?:[ \t]*-[ \t]*.+\n?)+)", fm, re.MULTILINE)
+                if m:
+                    for line in m.group(1).splitlines():
+                        lm = re.match(r"[ \t]*-[ \t]*(.+)", line)
+                        if lm:
+                            tags.append(lm.group(1).strip().strip("\"'"))
+    return tags, title, body
+
+def scan_obsidian_vault(cfg):
+    obs = cfg.get("integrations", {}).get("obsidian", {})
+    if not obs.get("enabled") or not obs.get("vault_path", ""):
+        return []
+    vault_path = Path(obs["vault_path"])
+    if not vault_path.exists():
+        return []
+
+    vault_name = obs.get("vault_name", "") or vault_path.name
+    filter_tags = set(obs.get("filter", {}).get("tags", []))
+    filter_folders = obs.get("filter", {}).get("folders", [])
+    preview_length = int(obs.get("preview_length", 120))
+    both_empty = not filter_tags and not filter_folders
+
+    results = []
+
+    def _walk(path, depth):
+        if depth > _OBSIDIAN_SCAN_DEPTH:
+            return
+        try:
+            entries = sorted(path.iterdir(), key=lambda e: e.name)
+        except PermissionError:
+            return
+        for entry in entries:
+            if entry.name.startswith("."):
+                continue
+            if entry.is_dir():
+                _walk(entry, depth + 1)
+            elif entry.is_file() and entry.suffix.lower() == ".md":
+                try:
+                    vault_rel = str(entry.relative_to(vault_path))
+
+                    # Folder check before file I/O for speed
+                    folder_match = bool(filter_folders and any(
+                        vault_rel.startswith(f) for f in filter_folders
+                    ))
+
+                    # Short-circuit: folder filter active, no folder match, and no tag filter
+                    if not both_empty and not folder_match and not filter_tags:
+                        continue
+
+                    text = entry.read_text(encoding="utf-8", errors="replace")
+                    tags, title, body = _parse_obsidian_frontmatter(text)
+
+                    tag_match = bool(filter_tags and filter_tags & set(tags))
+
+                    if not (both_empty or tag_match or folder_match):
+                        continue
+
+                    if not title:
+                        title = re.sub(r"[-_]", " ", entry.stem).strip().capitalize()
+
+                    stable_id = hashlib.sha1(vault_rel.encode()).hexdigest()[:8]
+                    encoded_path = urllib.parse.quote(vault_rel, safe="")
+                    obsidian_uri = (
+                        f"obsidian://open?vault={urllib.parse.quote(vault_name, safe='')}"
+                        f"&file={encoded_path}"
+                    )
+
+                    results.append({
+                        "id": stable_id,
+                        "title": title,
+                        "vault_relative_path": vault_rel,
+                        "tags": tags,
+                        "preview": body[:preview_length].strip(),
+                        "last_modified": int(entry.stat().st_mtime * 1000),
+                        "obsidian_uri": obsidian_uri,
+                    })
+                except Exception:
+                    continue
+
+    _walk(vault_path, 0)
+    return results
+
+@app.route("/api/obsidian/notes")
+def obsidian_notes():
+    return jsonify(scan_obsidian_vault(CONFIG))
+
+@app.route("/api/obsidian/link", methods=["POST"])
+def obsidian_link():
+    data = load_data()
+    body = request.json
+    idea_id = body.get("idea_id", "")
+    note_id = body.get("note_id", "")
+    if not idea_id or not note_id:
+        return jsonify({"error": "idea_id and note_id required"}), 400
+    links = data.setdefault("obsidian_links", [])
+    if not any(l["idea_id"] == idea_id and l["note_id"] == note_id for l in links):
+        links.append({"idea_id": idea_id, "note_id": note_id})
+        save_data(data)
+    return jsonify({"ok": True})
+
+@app.route("/api/obsidian/link/<idea_id>/<note_id>", methods=["DELETE"])
+def obsidian_unlink(idea_id, note_id):
+    data = load_data()
+    data.setdefault("obsidian_links", [])
+    data["obsidian_links"] = [
+        l for l in data["obsidian_links"]
+        if not (l["idea_id"] == idea_id and l["note_id"] == note_id)
+    ]
+    save_data(data)
+    return jsonify({"ok": True})
+
+@app.route("/api/obsidian/status")
+def obsidian_status():
+    obs = CONFIG.get("integrations", {}).get("obsidian", {})
+    enabled = obs.get("enabled", False)
+    vault_path = obs.get("vault_path", "")
+    vault_exists = bool(vault_path and Path(vault_path).exists())
+    note_count = len(scan_obsidian_vault(CONFIG)) if (enabled and vault_exists) else 0
+    return jsonify({"enabled": enabled, "vault_exists": vault_exists, "note_count": note_count})
 
 # ── scan & sync ───────────────────────────────────────────────
 
