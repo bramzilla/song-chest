@@ -532,9 +532,9 @@ header{display:flex;align-items:center;justify-content:space-between;padding:13p
             <label class="flabel" style="margin-bottom:4px">Filter Folders <span style="color:var(--text-faint)">(comma-separated; empty = all)</span></label>
             <input class="path-input" id="obs-filter-folders" placeholder="Song Ideas, Projects">
           </div>
-          <div><button class="btn sm teal" onclick="saveObsidianSettings()">Save Obsidian Settings</button></div>
-          <div id="obs-status" class="obs-status" style="display:none"></div>
         </div>
+        <div style="margin-top:8px"><button class="btn sm teal" onclick="saveObsidianSettings()">Save Obsidian Settings</button></div>
+        <div id="obs-status" class="obs-status" style="display:none"></div>
       </div>
     </div>
     <div class="mfooter"><button class="btn sm" onclick="closeModal('settings-modal')">Cancel</button><button class="btn sm primary" onclick="savePaths()">Save Paths</button></div>
@@ -635,6 +635,7 @@ async function api(path,method='GET',body=null){
 
 async function loadAll(){
   [db,cfg,files]=await Promise.all([api('/api/data'),api('/api/config'),api('/api/scan')]);
+  obsNotes=null; // vault may have changed since last scan
   render();
 }
 
