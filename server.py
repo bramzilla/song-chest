@@ -574,7 +574,9 @@ def create_idea():
             "content": body.get("content",""), "audiofile": body.get("audiofile",""),
             "lyricfile": body.get("lyricfile",""), "project": body.get("project") or None,
             "tags": body.get("tags",[]), "links": body.get("links",[]),
-            "notes": body.get("notes",""), "created": now_ms(), "updated": now_ms()}
+            "notes": body.get("notes",""), "status": body.get("status","draft"),
+            "starred": bool(body.get("starred",False)),
+            "created": now_ms(), "updated": now_ms()}
     for lid in idea["links"]:
         other = next((x for x in data["ideas"] if x["id"]==lid), None)
         if other and idea["id"] not in other["links"]: other["links"].append(idea["id"])
@@ -588,7 +590,7 @@ def update_idea(iid):
     if not idea: abort(404)
     old_links = set(idea.get("links",[]))
     body = request.json
-    for k in ("type","title","content","audiofile","lyricfile","project","tags","links","notes"):
+    for k in ("type","title","content","audiofile","lyricfile","project","tags","links","notes","status","starred"):
         if k in body: idea[k] = body[k]
     idea["updated"] = now_ms()
     idea["project"] = idea.get("project") or None

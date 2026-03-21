@@ -225,6 +225,24 @@ header{display:flex;align-items:center;justify-content:space-between;padding:13p
 .hist-item.undone{opacity:.5}
 .hist-title{font-family:'Fraunces',serif;font-size:13px;flex:1}
 .hist-meta{font-size:10px;color:var(--text-faint)}
+/* status badges */
+.status-badge{font-size:9px;letter-spacing:1px;text-transform:uppercase;padding:2px 6px;border-radius:3px;border:1px solid;font-family:'DM Mono',monospace;white-space:nowrap;flex-shrink:0}
+.sb-draft{color:var(--text-faint);border-color:var(--border);background:transparent}
+.sb-in-progress{color:var(--teal);border-color:var(--teal);background:rgba(99,182,207,.08)}
+.sb-finished{color:var(--gold);border-color:var(--gold);background:rgba(218,165,32,.08)}
+.sb-archived{color:var(--text-faint);border-color:var(--border);background:var(--bg3)}
+/* star */
+.star-btn{background:none;border:none;cursor:pointer;font-size:17px;line-height:1;padding:0 2px;color:var(--text-faint);transition:color .15s,opacity .15s;flex-shrink:0}
+.star-btn:hover{color:var(--gold)}
+.star-btn.starred{color:var(--gold)}
+/* status selector (edit modal) */
+.status-sel{display:flex;gap:6px;flex-wrap:wrap}
+.sopt{font-size:10px;padding:3px 8px;border-radius:3px;border:1px solid var(--border);background:transparent;color:var(--text-dim);cursor:pointer;font-family:'DM Mono',monospace;transition:all .15s}
+.sopt:hover{border-color:var(--text-dim)}
+.sopt.active[data-s="draft"]{border-color:var(--text-faint);color:var(--text-faint)}
+.sopt.active[data-s="in-progress"]{border-color:var(--teal);color:var(--teal);background:rgba(99,182,207,.1)}
+.sopt.active[data-s="finished"]{border-color:var(--gold);color:var(--gold);background:rgba(218,165,32,.1)}
+.sopt.active[data-s="archived"]{border-color:var(--border-strong);color:var(--text-faint);background:var(--bg3)}
 /* insights */
 .insights-stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:9px;margin-bottom:16px}
 .stat-card{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px 14px;text-align:center}
@@ -327,10 +345,26 @@ header{display:flex;align-items:center;justify-content:space-between;padding:13p
       </div>
     </div>
     <div class="sidebar-section">
+      <div class="slabel">Quick</div>
+      <div class="nav-item" id="nav-starred" onclick="setFilter('project','starred')">
+        <span style="font-size:13px;color:var(--gold);width:7px;text-align:center">★</span>
+        <div class="nav-name">Starred</div>
+        <div class="nav-count" id="cnt-starred">—</div>
+      </div>
+    </div>
+    <div class="sidebar-section">
       <div class="slabel">Type</div>
       <div class="nav-item" id="tf-all" onclick="setFilter('type','all')"><div class="nav-dot" style="background:var(--text-faint)"></div><div class="nav-name" style="font-family:'DM Mono',monospace;font-size:12px">All</div></div>
       <div class="nav-item" id="tf-lyric" onclick="setFilter('type','lyric')"><div class="nav-dot" style="background:var(--gold)"></div><div class="nav-name" style="font-family:'DM Mono',monospace;font-size:12px">Lyrics</div></div>
       <div class="nav-item" id="tf-audio" onclick="setFilter('type','audio')"><div class="nav-dot" style="background:var(--teal)"></div><div class="nav-name" style="font-family:'DM Mono',monospace;font-size:12px">Audio</div></div>
+    </div>
+    <div class="sidebar-section">
+      <div class="slabel">Status</div>
+      <div class="nav-item" id="sf-all" onclick="setFilter('status','all')"><div class="nav-dot" style="background:var(--text-faint)"></div><div class="nav-name" style="font-size:12px">All</div></div>
+      <div class="nav-item" id="sf-draft" onclick="setFilter('status','draft')"><div class="nav-dot" style="background:var(--text-faint)"></div><div class="nav-name" style="font-size:12px">Draft</div></div>
+      <div class="nav-item" id="sf-in-progress" onclick="setFilter('status','in-progress')"><div class="nav-dot" style="background:var(--teal)"></div><div class="nav-name" style="font-size:12px">In Progress</div></div>
+      <div class="nav-item" id="sf-finished" onclick="setFilter('status','finished')"><div class="nav-dot" style="background:var(--gold)"></div><div class="nav-name" style="font-size:12px">Finished</div></div>
+      <div class="nav-item" id="sf-archived" onclick="setFilter('status','archived')"><div class="nav-dot" style="background:var(--border-strong)"></div><div class="nav-name" style="font-size:12px">Archived</div></div>
     </div>
     <div class="sidebar-section" id="integrations-section" style="display:none">
       <div class="slabel">Integrations</div>
@@ -367,10 +401,15 @@ header{display:flex;align-items:center;justify-content:space-between;padding:13p
   <div class="modal">
     <div class="mhdr">
       <div style="flex:1"><div class="mtypelabel" id="vm-type"></div><div class="mtitle" id="vm-title"></div></div>
+      <button class="star-btn" id="vm-star" onclick="toggleStar()" title="Star this idea">☆</button>
       <button class="close-btn" onclick="closeModal('view-modal')">✕</button>
     </div>
     <div class="mbody">
       <div id="vm-proj-row" class="msec"></div>
+      <div class="msec" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="font-size:10px;letter-spacing:1px;color:var(--text-faint);text-transform:uppercase">Status</span>
+        <div class="status-sel" id="vm-status-sel"></div>
+      </div>
       <div id="vm-content" class="msec"></div>
       <div id="vm-linked-sec" class="msec" style="display:none"><div class="mseclabel">Linked Ideas</div><div class="linked-grid" id="vm-linked-grid"></div></div>
       <div id="vm-obsidian-sec" class="msec" style="display:none">
@@ -422,6 +461,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:13p
       <div class="fg"><label class="flabel">Project</label><div class="proj-sel" id="em-proj-sel"></div></div>
       <div class="fg"><label class="flabel">Tags <span style="color:var(--text-faint)">(Enter or comma)</span></label><div class="tag-input-area" id="tag-area" onclick="document.getElementById('ti').focus()"><input class="tii" id="ti" placeholder="verse, hook…" onkeydown="handleTag(event)"></div></div>
       <div class="fg"><label class="flabel">Link to other ideas</label><div class="link-sel" id="em-link-sel"></div></div>
+      <div class="fg"><label class="flabel">Status</label><div class="status-sel" id="em-status-sel"></div></div>
       <div class="fg"><label class="flabel">Notes</label><textarea class="ftextarea" id="em-notes" style="min-height:58px"></textarea></div>
     </div>
     <div class="mfooter"><button class="btn sm" onclick="closeModal('edit-modal')">Cancel</button><button class="btn sm primary" id="save-btn" onclick="saveIdea()">Save</button></div>
@@ -648,8 +688,8 @@ let db={projects:[],ideas:[],move_history:[],obsidian_links:[],trash:[]};
 let cfg={audio_folder:'',lyrics_folder:'',audio_exists:false,lyrics_exists:false};
 let files={audio:[],lyrics:[]};
 let obsNotes=null; // cached vault scan results
-let ui={view:'grid',pf:'all',tf:'all',tag:null,search:'',sort:'newest',
-        viewingId:null,editingId:null,eType:'lyric',eTags:[],eLinks:[],eSelAudio:'',eSelLyric:'',
+let ui={view:'grid',pf:'all',tf:'all',sf:'all',tag:null,search:'',sort:'newest',
+        viewingId:null,editingId:null,eType:'lyric',eTags:[],eLinks:[],eSelAudio:'',eSelLyric:'',eStatus:'draft',
         pType:'EP',pColor:COLORS[0],audioEl:null,playingId:null,
         moveIdeaId:null,moveTargetPid:undefined,movePreview:null,
         pendingPaths:{audio:'',lyrics:''},
@@ -699,6 +739,12 @@ function renderSidebar(){
   document.getElementById('all-btn').className='nav-item'+(ui.pf==='all'?' active':'');
   document.getElementById('cnt-all').textContent=db.ideas.length;
   document.getElementById('cnt-unassigned').textContent=db.ideas.filter(i=>!i.project).length;
+  // Starred
+  const starredCount=db.ideas.filter(i=>i.starred).length;
+  document.getElementById('nav-starred').className='nav-item'+(ui.pf==='starred'?' active':'');
+  document.getElementById('cnt-starred').textContent=starredCount;
+  // Status active states
+  ['all','draft','in-progress','finished','archived'].forEach(s=>{const el=document.getElementById('sf-'+s);if(el)el.className='nav-item'+(ui.sf===s?' active':'');});
   // Integrations section
   const obsEnabled=cfg.integrations?.obsidian?.enabled;
   document.getElementById('integrations-section').style.display=obsEnabled?'':'none';
@@ -711,11 +757,13 @@ function renderSidebar(){
 
 function getFiltered(){
   let ideas=[...db.ideas];
-  if(ui.pf==='unassigned')ideas=ideas.filter(i=>!i.project);
-  else if(ui.pf!=='all')ideas=ideas.filter(i=>i.project===ui.pf);
+  if(ui.pf==='starred')ideas=ideas.filter(i=>i.starred);
+  else if(ui.pf==='unassigned')ideas=ideas.filter(i=>!i.project);
+  else if(ui.pf!=='all'&&ui.pf!=='obsidian')ideas=ideas.filter(i=>i.project===ui.pf);
   if(ui.tf!=='all')ideas=ideas.filter(i=>i.type===ui.tf);
+  if(ui.sf!=='all')ideas=ideas.filter(i=>(i.status||'draft')===ui.sf);
   if(ui.tag)ideas=ideas.filter(i=>(i.tags||[]).includes(ui.tag));
-  if(ui.search){const q=ui.search.toLowerCase();ideas=ideas.filter(i=>i.title.toLowerCase().includes(q)||(i.content||'').toLowerCase().includes(q)||(i.tags||[]).some(t=>t.toLowerCase().includes(q)));}
+  if(ui.search){const q=ui.search.toLowerCase();ideas=ideas.filter(i=>i.title.toLowerCase().includes(q)||(i.content||'').toLowerCase().includes(q)||(i.notes||'').toLowerCase().includes(q)||(i.tags||[]).some(t=>t.toLowerCase().includes(q)));}
   if(ui.sort==='newest')ideas.sort((a,b)=>b.created-a.created);
   else if(ui.sort==='oldest')ideas.sort((a,b)=>a.created-b.created);
   else if(ui.sort==='title')ideas.sort((a,b)=>a.title.localeCompare(b.title));
@@ -820,6 +868,12 @@ function renderObsListItem(note){
   </div>`;
 }
 
+function statusBadge(status){
+  const s=status||'draft';
+  const labels={'draft':'draft','in-progress':'in progress','finished':'finished','archived':'archived'};
+  return `<span class="status-badge sb-${s}">${labels[s]||s}</span>`;
+}
+
 function renderCard(idea){
   const proj=idea.project?db.projects.find(p=>p.id===idea.project):null;
   const linked=(idea.links||[]).length>0;
@@ -827,6 +881,7 @@ function renderCard(idea){
   const tagHtml=(idea.tags||[]).slice(0,3).map(t=>`<span class="tag" style="background:${tCol(t,.13)};color:${tCol(t,1)}">${esc(t)}</span>`).join('');
   const extra=(idea.tags||[]).length>3?`<span style="font-size:10px;color:var(--text-faint)">+${idea.tags.length-3}</span>`:'';
   const projTag=proj?`<span class="tag" style="background:${proj.color}22;color:${proj.color}">${esc(proj.name)}</span>`:'';
+  const starHtml=idea.starred?`<span style="color:var(--gold);font-size:13px;flex-shrink:0">★</span>`:'';
   let body='';
   if(idea.type==='lyric'){
     const lyricPreview=esc((idea.content||'').replace(/\n/g,' ↵ '));
@@ -840,10 +895,10 @@ function renderCard(idea){
   return `<div class="idea-card${linked?' linked-hl':''}${isRaw?' raw':''} fi" id="card-${idea.id}" onclick="cardClick('${idea.id}')">
     <div class="card-check"></div>
     <div class="card-bar type-${idea.type}"></div>
-    <div class="card-header"><div class="card-title">${esc(idea.title)}</div><div class="card-badge badge-${idea.type}">${idea.type==='lyric'?'✍ lyric':'♫ audio'}</div></div>
+    <div class="card-header"><div class="card-title">${starHtml}${esc(idea.title)}</div><div class="card-badge badge-${idea.type}">${idea.type==='lyric'?'✍ lyric':'♫ audio'}</div></div>
     <div class="card-body">${body}</div>
     ${audioRow}
-    <div class="card-footer"><div class="card-tags">${projTag}${tagHtml}${extra}</div>${isRaw?'<span style="font-size:9px;letter-spacing:1px;color:var(--text-faint);border:1px solid var(--text-faint);padding:1px 5px;border-radius:3px">UNEDITED</span>':''}${linked?`<span class="link-badge">⇆${idea.links.length}</span>`:''}<span class="card-meta">${relDate(idea.created)}</span></div>
+    <div class="card-footer"><div class="card-tags">${projTag}${tagHtml}${extra}</div>${statusBadge(idea.status)}${isRaw?'<span style="font-size:9px;letter-spacing:1px;color:var(--text-faint);border:1px solid var(--text-faint);padding:1px 5px;border-radius:3px">UNEDITED</span>':''}${linked?`<span class="link-badge">⇆${idea.links.length}</span>`:''}<span class="card-meta">${relDate(idea.created)}</span></div>
   </div>`;
 }
 
@@ -855,11 +910,13 @@ function renderListItem(idea){
   const lyricFilename=fileRef?fileRef.split('/').pop():'';
   const preview=idea.type==='lyric'?esc((idea.content||'').replace(/\n/g,' · ').slice(0,80))||(lyricFilename?`📄 ${esc(lyricFilename)}`:'no content yet'):esc(idea.audiofile||'no file');
   const tagHtml=(idea.tags||[]).slice(0,3).map(t=>`<span class="tag" style="background:${tCol(t,.12)};color:${tCol(t,1)}">${esc(t)}</span>`).join('');
+  const starHtml=idea.starred?`<span style="color:var(--gold);font-size:12px">★</span>`:'';
   return `<div class="list-item${linked?' linked-hl':''}${isRaw?' raw':''} fi" id="li-${idea.id}" onclick="cardClick('${idea.id}')">
     <div class="list-dot" style="background:${idea.type==='lyric'?'var(--gold)':'var(--teal)'}"></div>
-    <div class="list-title">${esc(idea.title)}</div>
+    <div class="list-title">${starHtml}${esc(idea.title)}</div>
     <div class="list-preview">${preview}</div>
     <div style="display:flex;gap:4px">${tagHtml}</div>
+    ${statusBadge(idea.status)}
     ${proj?`<span style="font-size:10px;color:${proj.color}">${esc(proj.name)}</span>`:''}
     ${linked?`<span style="font-size:10px;color:var(--teal)">⇆${idea.links.length}</span>`:''}
     <span style="font-size:10px;color:var(--text-faint)">${relDate(idea.created)}</span>
@@ -975,6 +1032,15 @@ function viewIdea(id){
   const proj=idea.project?db.projects.find(p=>p.id===idea.project):null;
   const te=document.getElementById('vm-type');te.textContent=idea.type==='lyric'?'✍ Lyric Idea':'♫ Audio Idea';te.style.color=idea.type==='lyric'?'var(--gold)':'var(--teal)';
   document.getElementById('vm-title').textContent=idea.title;
+  // star button
+  const starBtn=document.getElementById('vm-star');
+  starBtn.textContent=idea.starred?'★':'☆';
+  starBtn.className='star-btn'+(idea.starred?' starred':'');
+  // status selector
+  const statusSel=document.getElementById('vm-status-sel');
+  const statuses=[['draft','Draft'],['in-progress','In Progress'],['finished','Finished'],['archived','Archived']];
+  const curStatus=idea.status||'draft';
+  statusSel.innerHTML=statuses.map(([s,l])=>`<button class="sopt${s===curStatus?' active':''}" data-s="${s}" onclick="setIdeaStatus('${s}')">${l}</button>`).join('');
   document.getElementById('vm-proj-row').innerHTML=proj?`<span class="tag" style="background:${proj.color}22;color:${proj.color};padding:4px 10px;border-radius:4px;font-size:11px">${esc(proj.name)} · ${proj.type} · 📁 ${proj.folder}</span>`:`<span style="font-size:11px;color:var(--text-faint)">No project assigned</span>`;
   const cs=document.getElementById('vm-content');
   if(idea.type==='lyric'){
@@ -1184,22 +1250,22 @@ async function executeMove(){
 
 // ── edit modal ────────────────────────────────────────────────
 function openAddModal(type){
-  ui.editingId=null;ui.eType=type||'lyric';ui.eTags=[];ui.eLinks=[];ui.eSelAudio='';ui.eSelLyric='';
+  ui.editingId=null;ui.eType=type||'lyric';ui.eTags=[];ui.eLinks=[];ui.eSelAudio='';ui.eSelLyric='';ui.eStatus='draft';
   document.getElementById('em-heading').textContent='New Idea';
   ['em-title','em-content','em-notes'].forEach(id=>document.getElementById(id).value='');
   const lpa=document.getElementById('lyric-preview-area');if(lpa)lpa.style.display='none';
-  selType(ui.eType);renderProjSel(null);renderLinkSel();renderTagChips();buildFilePickers();
+  selType(ui.eType);renderProjSel(null);renderLinkSel();renderTagChips();buildFilePickers();renderStatusSel();
   document.getElementById('edit-modal').classList.add('open');
 }
 
 function openEditFromView(){
   const idea=db.ideas.find(i=>i.id===ui.viewingId);if(!idea)return;
-  ui.editingId=idea.id;ui.eType=idea.type;ui.eTags=[...(idea.tags||[])];ui.eLinks=[...(idea.links||[])];ui.eSelAudio=idea.audiofile||'';ui.eSelLyric=idea.lyricfile||'';
+  ui.editingId=idea.id;ui.eType=idea.type;ui.eTags=[...(idea.tags||[])];ui.eLinks=[...(idea.links||[])];ui.eSelAudio=idea.audiofile||'';ui.eSelLyric=idea.lyricfile||'';ui.eStatus=idea.status||'draft';
   document.getElementById('em-heading').textContent='Edit Idea';
   document.getElementById('em-title').value=idea.title;
   document.getElementById('em-content').value=idea.content||'';
   document.getElementById('em-notes').value=idea.notes||'';
-  selType(idea.type);renderProjSel(idea.project);renderLinkSel();renderTagChips();buildFilePickers();
+  selType(idea.type);renderProjSel(idea.project);renderLinkSel();renderTagChips();buildFilePickers();renderStatusSel();
   closeModal('view-modal');document.getElementById('edit-modal').classList.add('open');
 }
 
@@ -1289,11 +1355,38 @@ function renderTagChips(){
 function handleTag(e){if(e.key==='Enter'||e.key===','){e.preventDefault();const v=e.target.value.replace(',','').trim();if(v&&!ui.eTags.includes(v)){ui.eTags.push(v);renderTagChips();}else e.target.value='';}}
 function removeTag(t){ui.eTags=ui.eTags.filter(x=>x!==t);renderTagChips();}
 
+function renderStatusSel(){
+  const statuses=[['draft','Draft'],['in-progress','In Progress'],['finished','Finished'],['archived','Archived']];
+  document.getElementById('em-status-sel').innerHTML=statuses.map(([s,l])=>`<button class="sopt${s===ui.eStatus?' active':''}" data-s="${s}" onclick="selStatus('${s}')">${l}</button>`).join('');
+}
+function selStatus(s){ui.eStatus=s;renderStatusSel();}
+
+async function setIdeaStatus(status){
+  const idea=db.ideas.find(i=>i.id===ui.viewingId);if(!idea)return;
+  idea.status=status;
+  await api('/api/ideas/'+idea.id,'PUT',{...idea});
+  // re-render status selector in modal
+  document.getElementById('vm-status-sel').querySelectorAll('.sopt').forEach(b=>{b.className='sopt'+(b.dataset.s===status?' active':'');});
+  render();
+}
+
+async function toggleStar(){
+  const idea=db.ideas.find(i=>i.id===ui.viewingId);if(!idea)return;
+  idea.starred=!idea.starred;
+  await api('/api/ideas/'+idea.id,'PUT',{...idea});
+  const btn=document.getElementById('vm-star');
+  btn.textContent=idea.starred?'★':'☆';
+  btn.className='star-btn'+(idea.starred?' starred':'');
+  render();
+}
+
+
 async function saveIdea(){
   const title=document.getElementById('em-title').value.trim();if(!title){toast('Please enter a title.');return;}
   const selProjBtn=document.querySelector('#em-proj-sel .popt.sel');const projId=selProjBtn?selProjBtn.dataset.pid:'';
   const tv=document.getElementById('ti').value.replace(',','').trim();if(tv&&!ui.eTags.includes(tv))ui.eTags.push(tv);
-  const body={type:ui.eType,title,content:ui.eType==='lyric'?document.getElementById('em-content').value:'',audiofile:ui.eType==='audio'?ui.eSelAudio:'',lyricfile:ui.eType==='lyric'?ui.eSelLyric:'',project:projId||null,tags:[...ui.eTags],links:[...ui.eLinks],notes:document.getElementById('em-notes').value};
+  const existingIdea=ui.editingId?db.ideas.find(i=>i.id===ui.editingId):null;
+  const body={type:ui.eType,title,content:ui.eType==='lyric'?document.getElementById('em-content').value:'',audiofile:ui.eType==='audio'?ui.eSelAudio:'',lyricfile:ui.eType==='lyric'?ui.eSelLyric:'',project:projId||null,tags:[...ui.eTags],links:[...ui.eLinks],notes:document.getElementById('em-notes').value,status:ui.eStatus||'draft',starred:existingIdea?!!existingIdea.starred:false};
   document.getElementById('save-btn').disabled=true;
   try{if(ui.editingId){await api('/api/ideas/'+ui.editingId,'PUT',body);}else{await api('/api/ideas','POST',body);}db=await api('/api/data');files=await api('/api/scan');closeModal('edit-modal');render();toast(ui.editingId?'Idea updated.':'Idea saved.');}
   catch(err){toast('Error: '+err.message);}
@@ -1739,11 +1832,15 @@ async function undoMove(hid){
 function setFilter(kind,val){
   if(kind==='project'){ui.pf=val;ui.tag=null;}
   else if(kind==='type'){
-    if(ui.pf==='obsidian')ui.pf='all'; // leave obsidian view when type filter clicked
+    if(ui.pf==='obsidian')ui.pf='all';
     ui.tf=val;['all','lyric','audio'].forEach(t=>{const el=document.getElementById('tf-'+t);if(el)el.className='nav-item'+(t===val?' active':'');});
   }
+  else if(kind==='status'){
+    if(ui.pf==='obsidian')ui.pf='all';
+    ui.sf=val;['all','draft','in-progress','finished','archived'].forEach(s=>{const el=document.getElementById('sf-'+s);if(el)el.className='nav-item'+(s===val?' active':'');});
+  }
   else if(kind==='tag'){
-    if(ui.pf==='obsidian')ui.pf='all'; // leave obsidian view when tag clicked
+    if(ui.pf==='obsidian')ui.pf='all';
     ui.tag=ui.tag===val?null:val;
   }
   render();
