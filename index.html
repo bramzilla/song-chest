@@ -333,6 +333,14 @@ header{display:flex;align-items:center;justify-content:space-between;padding:13p
       <div class="nav-item" id="tf-audio" onclick="setFilter('type','audio')"><div class="nav-dot" style="background:var(--teal)"></div><div class="nav-name" style="font-family:'DM Mono',monospace;font-size:12px">Audio</div></div>
     </div>
     <div class="sidebar-section" style="flex:1"><div class="slabel">Tags</div><div class="tag-cloud" id="sidebar-tags"></div></div>
+    <div class="sidebar-section" id="integrations-section" style="display:none">
+      <div class="slabel">Integrations</div>
+      <div class="nav-item" id="nav-obsidian" onclick="setFilter('project','obsidian')">
+        <div class="nav-dot" style="background:#7B68EE"></div>
+        <div class="nav-name">Obsidian</div>
+        <div class="nav-count" id="cnt-obsidian">—</div>
+      </div>
+    </div>
   </aside>
 
   <main class="main-area">
@@ -666,6 +674,11 @@ function renderSidebar(){
   document.getElementById('all-btn').className='nav-item'+(ui.pf==='all'?' active':'');
   document.getElementById('cnt-all').textContent=db.ideas.length;
   document.getElementById('cnt-unassigned').textContent=db.ideas.filter(i=>!i.project).length;
+  // Integrations section
+  const obsEnabled=cfg.integrations?.obsidian?.enabled;
+  document.getElementById('integrations-section').style.display=obsEnabled?'':'none';
+  document.getElementById('nav-obsidian').className='nav-item'+(ui.pf==='obsidian'?' active':'');
+  document.getElementById('cnt-obsidian').textContent=obsNotes?obsNotes.length:'—';
   const allTags=[...new Set(db.ideas.flatMap(i=>i.tags||[]))].sort();
   const tl=document.getElementById('sidebar-tags');tl.innerHTML='';
   allTags.forEach(t=>{const s=document.createElement('span');s.className='tag'+(ui.tag===t?' active-tag':'');s.style.background=tCol(t,.15);s.style.color=tCol(t,1);s.textContent=t;s.onclick=()=>setFilter('tag',t);tl.appendChild(s);});
@@ -686,6 +699,10 @@ function getFiltered(){
 }
 
 function renderCanvas(){
+  if(ui.pf==='obsidian'){
+    if(!cfg.integrations?.obsidian?.enabled){ui.pf='all';}
+    else{renderObsidianCanvas();return;}
+  }
   const canvas=document.getElementById('canvas');
   const ideas=getFiltered();
   let hdr='';
@@ -727,6 +744,55 @@ function renderList(ideas){
   if(lyrics.length)html+=`<div class="sdiv fi">Lyrics (${lyrics.length})</div><div class="ideas-list">${lyrics.map(renderListItem).join('')}</div><div style="height:12px"></div>`;
   if(audio.length)html+=`<div class="sdiv fi">Audio (${audio.length})</div><div class="ideas-list">${audio.map(renderListItem).join('')}</div>`;
   return html;
+}
+
+// ── obsidian canvas ───────────────────────────────────────────
+async function renderObsidianCanvas(){
+  const canvas=document.getElementById('canvas');
+  canvas.innerHTML='<div class="empty fi"><div class="empty-icon" style="color:#7B68EE;opacity:.5">✦</div><div class="empty-title">Loading notes…</div></div>';
+  const notes=await ensureObsNotes();
+  if(ui.pf!=='obsidian')return; // navigated away while loading
+  const cntEl=document.getElementById('cnt-obsidian');
+  if(cntEl)cntEl.textContent=notes.length;
+  if(!notes.length){
+    canvas.innerHTML='<div class="empty fi"><div class="empty-icon" style="color:#7B68EE;opacity:.5">✦</div><div class="empty-title">No notes found</div><div class="empty-sub">Check your vault path and filter tags in <strong>⚙ Settings → Integrations</strong>.</div></div>';
+    return;
+  }
+  let filtered=[...notes];
+  if(ui.search){const q=ui.search.toLowerCase();filtered=filtered.filter(n=>(n.title+' '+(n.tags||[]).join(' ')+' '+(n.preview||'')).toLowerCase().includes(q));}
+  if(ui.sort==='oldest')filtered.sort((a,b)=>a.last_modified-b.last_modified);
+  else if(ui.sort==='title')filtered.sort((a,b)=>a.title.localeCompare(b.title));
+  else filtered.sort((a,b)=>b.last_modified-a.last_modified);
+  const hdr=`<div class="proj-header fi"><div class="ph-dot" style="background:#7B68EE"></div><div class="ph-name">Obsidian Vault</div><div class="ph-type" style="color:#7B68EE">notes</div><div class="ph-stats"><div class="stat"><div class="stat-n">${filtered.length}</div><div class="stat-l">${filtered.length===notes.length?'notes':'matches'}</div></div></div></div>`;
+  if(!filtered.length){canvas.innerHTML=hdr+'<div class="empty fi"><div class="empty-title">No matches</div></div>';return;}
+  if(ui.view==='grid')canvas.innerHTML=hdr+`<div class="cards-grid">${filtered.map(renderObsCard).join('')}</div>`;
+  else canvas.innerHTML=hdr+`<div class="ideas-list">${filtered.map(renderObsListItem).join('')}</div>`;
+}
+
+function renderObsCard(note){
+  const linked=(db.obsidian_links||[]).some(l=>l.note_id===note.id);
+  const tagHtml=(note.tags||[]).slice(0,3).map(t=>`<span class="tag" style="background:${tCol(t,.13)};color:${tCol(t,1)}">${esc(t)}</span>`).join('');
+  const extra=(note.tags||[]).length>3?`<span style="font-size:10px;color:var(--text-faint)">+${note.tags.length-3}</span>`:'';
+  const preview=note.preview?`<div class="card-preview">${esc(note.preview)}</div>`:`<div class="card-preview"><span style="color:var(--text-faint);font-style:italic">no preview</span></div>`;
+  return `<div class="idea-card${linked?' linked-hl':''} fi" onclick="window.location.href=${JSON.stringify(note.obsidian_uri)}">
+    <div class="card-bar" style="background:#7B68EE"></div>
+    <div class="card-header"><div class="card-title">${esc(note.title)}</div><div class="card-badge" style="background:rgba(123,104,238,.15);color:#7B68EE">✦ note</div></div>
+    <div class="card-body">${preview}</div>
+    <div class="card-footer"><div class="card-tags">${tagHtml}${extra}</div>${linked?'<span class="link-badge">⇆</span>':''}<span class="card-meta">${relDate(note.last_modified)}</span></div>
+  </div>`;
+}
+
+function renderObsListItem(note){
+  const linked=(db.obsidian_links||[]).some(l=>l.note_id===note.id);
+  const tagHtml=(note.tags||[]).slice(0,3).map(t=>`<span class="tag" style="background:${tCol(t,.12)};color:${tCol(t,1)}">${esc(t)}</span>`).join('');
+  return `<div class="list-item${linked?' linked-hl':''} fi" onclick="window.location.href=${JSON.stringify(note.obsidian_uri)}">
+    <div class="list-dot" style="background:#7B68EE"></div>
+    <div class="list-title">${esc(note.title)}</div>
+    <div class="list-preview">${esc((note.preview||'').replace(/\n/g,' · ').slice(0,80))||'<span style="font-style:italic;color:var(--text-faint)">no preview</span>'}</div>
+    <div style="display:flex;gap:4px">${tagHtml}</div>
+    ${linked?'<span style="font-size:10px;color:var(--teal)">⇆</span>':''}
+    <span style="font-size:10px;color:var(--text-faint)">${relDate(note.last_modified)}</span>
+  </div>`;
 }
 
 function renderCard(idea){
@@ -1535,8 +1601,14 @@ async function undoMove(hid){
 // ── controls & utils ──────────────────────────────────────────
 function setFilter(kind,val){
   if(kind==='project'){ui.pf=val;ui.tag=null;}
-  else if(kind==='type'){ui.tf=val;['all','lyric','audio'].forEach(t=>{const el=document.getElementById('tf-'+t);if(el)el.className='nav-item'+(t===val?' active':'');});}
-  else if(kind==='tag')ui.tag=ui.tag===val?null:val;
+  else if(kind==='type'){
+    if(ui.pf==='obsidian')ui.pf='all'; // leave obsidian view when type filter clicked
+    ui.tf=val;['all','lyric','audio'].forEach(t=>{const el=document.getElementById('tf-'+t);if(el)el.className='nav-item'+(t===val?' active':'');});
+  }
+  else if(kind==='tag'){
+    if(ui.pf==='obsidian')ui.pf='all'; // leave obsidian view when tag clicked
+    ui.tag=ui.tag===val?null:val;
+  }
   render();
 }
 function setView(v){ui.view=v;document.getElementById('vb-grid').className='view-btn'+(v==='grid'?' active':'');document.getElementById('vb-list').className='view-btn'+(v==='list'?' active':'');render();}
