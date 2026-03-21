@@ -70,6 +70,66 @@ python server.py
 
 ---
 
+## Try it with Docker (demo mode)
+
+No Python required. Docker runs a pre-populated demo environment so you can explore the app instantly.
+
+**Prerequisites:** [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running.
+
+### Start the demo
+
+```bash
+git clone https://github.com/bramzilla/song-chest.git
+cd song-chest
+docker compose up
+```
+
+Then open **http://localhost:5000** in your browser.
+
+The demo comes loaded with sample projects, ideas, lyrics, tags, and activity — so you land in a working workspace rather than a blank slate.
+
+### Stop
+
+```bash
+# In the terminal where it's running: Ctrl+C
+# Or if running in background:
+docker compose down
+```
+
+### Run in the background
+
+```bash
+docker compose up -d          # start (detached)
+docker compose logs -f        # watch logs
+docker compose down           # stop
+```
+
+### Fresh demo every time
+
+By default the container starts with clean demo data on every run — great for repeatable demos. Any changes you make are lost when the container stops. This is intentional.
+
+To **persist your changes** between restarts, uncomment the volume lines in `docker-compose.yml`:
+
+```yaml
+services:
+  song-chest:
+    volumes:
+      - songchest-data:/app/data.json
+
+volumes:
+  songchest-data:
+```
+
+### Rebuild after code changes
+
+If you edit `server.py` or `index.html` and want the container to pick them up:
+
+```bash
+docker compose up --build
+```
+
+---
+
 ## Configuration
 
 On first launch, Song Chest creates a `config.json` pointing to `./audio` and `./lyrics` inside the project folder. Change these to your real folders in **Settings** or by editing the file directly:
@@ -105,6 +165,6 @@ python test_api.py
 
 ## Roadmap
 
-- **v1.0** — installable macOS app (drag to Applications, no terminal required)
+- **v1.0** — installable macOS `.app` — download, drag to Applications, done *(in progress)*
 - **v1.1** — collaboration / shared vault over local network
 - **v1.2** — mobile companion (capture ideas on the go)
