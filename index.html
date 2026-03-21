@@ -803,7 +803,7 @@ function renderObsCard(note){
 function renderObsListItem(note){
   const linked=(db.obsidian_links||[]).some(l=>l.note_id===note.id);
   const tagHtml=(note.tags||[]).slice(0,3).map(t=>`<span class="tag" style="background:${tCol(t,.12)};color:${tCol(t,1)}">${esc(t)}</span>`).join('');
-  return `<div class="list-item${linked?' linked-hl':''} fi" onclick="openObsNote('${note.id}')">`
+  return `<div class="list-item${linked?' linked-hl':''} fi" onclick="openObsNote('${note.id}')">
     <div class="list-dot" style="background:#7B68EE"></div>
     <div class="list-title">${esc(note.title)}</div>
     <div class="list-preview">${esc((note.preview||'').replace(/\n/g,' · ').slice(0,80))||'<span style="font-style:italic;color:var(--text-faint)">no preview</span>'}</div>
