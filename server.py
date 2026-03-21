@@ -4,17 +4,31 @@ Run: ./start.sh  or  python server.py
 Open: http://localhost:5000
 """
 
-import json, os, shutil, uuid, time, re, hashlib, urllib.parse
+import sys, json, os, shutil, uuid, time, re, hashlib, urllib.parse
 from pathlib import Path
 from flask import Flask, jsonify, request, send_from_directory, send_file, abort
 
 APP_VERSION = "0.9.0"
 
-app = Flask(__name__, static_folder=".")
+# ── Path setup ────────────────────────────────────────────────
+# When running as a PyInstaller .app bundle:
+#   - RESOURCES_DIR  points to the extracted bundle (contains index.html)
+#   - DATA_DIR       points to ~/Library/Application Support/SongChest/
+#                    (writable; persists across app updates)
+# When running from source both dirs are the project root.
+if getattr(sys, "frozen", False):
+    RESOURCES_DIR = Path(sys._MEIPASS)
+    DATA_DIR      = Path.home() / "Library" / "Application Support" / "SongChest"
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+else:
+    RESOURCES_DIR = Path(__file__).parent
+    DATA_DIR      = Path(__file__).parent
 
-BASE_DIR    = Path(__file__).parent
-DATA_FILE   = BASE_DIR / "data.json"
-CONFIG_FILE = BASE_DIR / "config.json"
+BASE_DIR    = DATA_DIR   # kept so existing code using BASE_DIR still works
+DATA_FILE   = DATA_DIR  / "data.json"
+CONFIG_FILE = DATA_DIR  / "config.json"
+
+app = Flask(__name__, static_folder=str(RESOURCES_DIR))
 
 AUDIO_EXT  = {".m4a", ".mp3", ".wav", ".aiff", ".ogg", ".flac"}
 LYRICS_EXT = {".txt", ".md", ".rtf"}
@@ -955,7 +969,7 @@ def serve_lyric_file(filename):
 
 @app.route("/")
 def index():
-    return send_from_directory(BASE_DIR, "index.html")
+    return send_from_directory(str(RESOURCES_DIR), "index.html")
 
 if __name__ == "__main__":
     print(f"\n  🎵  Song Chest")

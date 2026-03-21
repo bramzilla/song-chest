@@ -1,5 +1,8 @@
 venv/
 .DS_Store
+# PyInstaller build artefacts
+build/
+dist/
 __MACOSX/
 *.pyc
 __pycache__/
