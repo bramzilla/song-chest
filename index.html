@@ -292,6 +292,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:13p
 .obs-status.bad{border-color:rgba(201,40,29,.3);color:var(--crimson)}
 .obs-note-card{background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:9px 11px;margin-bottom:5px}
 .obs-note-card.linked{border-color:rgba(99,182,207,.4)}
+.obs-note-card.sugg{border-color:rgba(123,104,238,.35);background:rgba(123,104,238,.04)}
 .obs-note-title{font-family:'Fraunces',serif;font-size:13px;margin-bottom:3px}
 .obs-note-preview{font-size:11px;color:var(--text-faint);line-height:1.4;margin-bottom:6px;white-space:pre-wrap}
 .obs-note-footer{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
@@ -687,7 +688,8 @@ const COLORS=['#DAA520','#C9281D','#63B6CF','#7CB67C','#B66AB6','#CF8E4E','#5B8D
 let db={projects:[],ideas:[],move_history:[],obsidian_links:[],trash:[]};
 let cfg={audio_folder:'',lyrics_folder:'',audio_exists:false,lyrics_exists:false};
 let files={audio:[],lyrics:[]};
-let obsNotes=null; // cached vault scan results
+let obsNotes=null;      // cached vault scan results
+let obsLastScanned=null; // timestamp (ms) of last successful scan
 let ui={view:'grid',pf:'all',tf:'all',sf:'all',tag:null,search:'',sort:'newest',
         viewingId:null,editingId:null,eType:'lyric',eTags:[],eLinks:[],eSelAudio:'',eSelLyric:'',eStatus:'draft',
         pType:'EP',pColor:COLORS[0],audioEl:null,playingId:null,
@@ -836,7 +838,8 @@ async function renderObsidianCanvas(){
   if(ui.sort==='oldest')filtered.sort((a,b)=>a.last_modified-b.last_modified);
   else if(ui.sort==='title')filtered.sort((a,b)=>a.title.localeCompare(b.title));
   else filtered.sort((a,b)=>b.last_modified-a.last_modified);
-  const hdr=`<div class="proj-header fi"><div class="ph-dot" style="background:#7B68EE"></div><div class="ph-name">Obsidian Vault</div><div class="ph-type" style="color:#7B68EE">notes</div><div class="ph-stats"><div class="stat"><div class="stat-n">${filtered.length}</div><div class="stat-l">${filtered.length===notes.length?'notes':'matches'}</div></div></div></div>`;
+  const scanAgo=obsLastScanned?`<span style="font-size:10px;color:var(--text-faint)">scanned ${relDate(obsLastScanned)}</span>`:'';
+  const hdr=`<div class="proj-header fi"><div class="ph-dot" style="background:#7B68EE"></div><div class="ph-name">Obsidian Vault</div><div class="ph-type" style="color:#7B68EE">notes</div><div class="ph-stats"><div class="stat"><div class="stat-n">${filtered.length}</div><div class="stat-l">${filtered.length===notes.length?'notes':'matches'}</div></div></div>${scanAgo}<button class="btn sm" style="font-size:10px;padding:2px 8px;border-color:#7B68EE;color:#7B68EE" onclick="refreshObsNotes()">↻ Refresh</button></div>`;
   if(!filtered.length){canvas.innerHTML=hdr+'<div class="empty fi"><div class="empty-title">No matches</div></div>';return;}
   if(ui.view==='grid')canvas.innerHTML=hdr+`<div class="cards-grid">${filtered.map(renderObsCard).join('')}</div>`;
   else canvas.innerHTML=hdr+`<div class="ideas-list">${filtered.map(renderObsListItem).join('')}</div>`;
@@ -1580,8 +1583,17 @@ async function saveObsidianSettings(){
 
 async function ensureObsNotes(){
   if(obsNotes!==null) return obsNotes;
-  try{obsNotes=await api('/api/obsidian/notes');}catch(e){obsNotes=[];}
+  try{obsNotes=await api('/api/obsidian/notes');obsLastScanned=Date.now();}catch(e){obsNotes=[];}
   return obsNotes;
+}
+
+async function refreshObsNotes(){
+  obsNotes=null;obsLastScanned=null;
+  const notes=await ensureObsNotes();
+  const el=document.getElementById('cnt-obsidian');
+  if(el)el.textContent=notes.length;
+  if(ui.pf==='obsidian')renderObsidianCanvas();
+  else toast(`↻ Vault refreshed — ${notes.length} note${notes.length!==1?'s':''} found.`);
 }
 
 async function renderObsLinked(ideaId){
@@ -1627,21 +1639,43 @@ function renderObsBrowsePanel(q){
   const lq=q.toLowerCase();
   const filtered=obsNotes.filter(n=>!lq||(n.title+' '+(n.tags||[]).join(' ')+' '+n.preview).toLowerCase().includes(lq));
   if(!filtered.length){listEl.innerHTML='<div style="font-size:11px;color:var(--text-faint)">No matching notes.</div>';return;}
-  listEl.innerHTML=filtered.map(note=>{
+
+  // Compute auto-link suggestions: unlinked notes whose title or preview mentions the idea title
+  const idea=db.ideas.find(i=>i.id===ideaId);
+  const ideaTitleWords=(idea?.title||'').toLowerCase().replace(/[^a-z0-9\s]/g,' ').trim();
+  const isSuggested=n=>{
+    if(linked.has(n.id)||!ideaTitleWords||ideaTitleWords.length<4)return false;
+    const haystack=(n.title+' '+(n.preview||'')).toLowerCase();
+    return ideaTitleWords.split(/\s+/).filter(w=>w.length>3).some(w=>haystack.includes(w));
+  };
+  const suggestions=!lq?filtered.filter(isSuggested):[];
+  const suggestedIds=new Set(suggestions.map(n=>n.id));
+
+  function noteCard(note,isSugg){
     const isLinked=linked.has(note.id);
     const tagPills=(note.tags||[]).map(t=>`<span class="tag" style="font-size:10px;padding:2px 7px;border-radius:20px;background:${tCol(t,.15)};color:${tCol(t,1)}">${esc(t)}</span>`).join('');
     const linkBtn=isLinked
-      ?`<button class="btn sm teal" style="font-size:10px;padding:2px 7px" onclick="unlinkObsNote('${ideaId}','${note.id}')">× unlink</button>`
-      :`<button class="btn sm" style="font-size:10px;padding:2px 7px" onclick="linkObsNote('${ideaId}','${note.id}')">+ link</button>`;
-    return `<div class="obs-note-card${isLinked?' linked':''}">
-      <div class="obs-note-title">${esc(note.title)}</div>
+      ?`<button class="btn sm teal" style="font-size:10px;padding:2px 7px" onclick="linkObsNote('${ideaId}','${note.id}')">× unlink</button>`
+      :`<button class="btn sm" style="font-size:10px;padding:2px 7px;border-color:#7B68EE;color:#7B68EE" onclick="linkObsNote('${ideaId}','${note.id}')">+ link</button>`;
+    const suggBadge=isSugg?`<span style="font-size:9px;letter-spacing:1px;color:#7B68EE;border:1px solid #7B68EE;padding:1px 5px;border-radius:3px;margin-right:4px">SUGGESTED</span>`:'';
+    return `<div class="obs-note-card${isLinked?' linked':''}${isSugg?' sugg':''}">
+      <div class="obs-note-title">${suggBadge}${esc(note.title)}</div>
       ${note.preview?`<div class="obs-note-preview">${esc(note.preview)}</div>`:''}
       <div class="obs-note-footer">${tagPills}
         <button class="btn sm" style="font-size:10px;padding:2px 7px;margin-left:auto" onclick="window.location.href=${JSON.stringify(note.obsidian_uri)}">open ↗</button>
         ${linkBtn}
       </div>
     </div>`;
-  }).join('');
+  }
+
+  let html='';
+  if(suggestions.length){
+    html+=`<div style="font-size:10px;letter-spacing:1px;color:#7B68EE;text-transform:uppercase;margin-bottom:6px;margin-top:2px">✦ Suggested matches</div>`;
+    html+=suggestions.map(n=>noteCard(n,true)).join('');
+    html+=`<div style="border-top:1px solid var(--border);margin:10px 0 8px"></div>`;
+  }
+  html+=filtered.filter(n=>!suggestedIds.has(n.id)).map(n=>noteCard(n,false)).join('');
+  listEl.innerHTML=html;
 }
 
 async function linkObsNote(ideaId,noteId){
