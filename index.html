@@ -262,8 +262,8 @@ header{display:flex;align-items:center;justify-content:space-between;padding:13p
 .coming-tile-title{font-family:'Fraunces',serif;font-size:13px;font-weight:500;flex:1}
 .coming-soon-badge{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;padding:2px 6px;border-radius:3px;background:var(--bg4);color:var(--text-faint);border:1px solid var(--border)}
 .coming-tile-body{padding:8px 13px 10px;display:flex;flex-direction:column;gap:4px}
-.ct-row{display:flex;align-items:center;gap:8px;padding:4px 0}
-.ct-dot{width:6px;height:6px;border-radius:50%;background:var(--border-strong);flex-shrink:0}
+.ct-row{display:flex;align-items:flex-start;gap:8px;padding:4px 0}
+.ct-dot{width:6px;height:6px;border-radius:50%;background:var(--border-strong);flex-shrink:0;margin-top:3px}
 .ct-label{font-family:'Fraunces',serif;font-size:11px;color:var(--text-dim);flex:1;line-height:1.4}
 .ct-meta{font-size:10px;color:var(--text-faint);white-space:nowrap}
 .ct-empty{font-size:11px;color:var(--text-faint);padding:6px 0;line-height:1.6}
@@ -1872,7 +1872,7 @@ async function renderActivityTile(){
   };
   el.innerHTML=activity.map(e=>{
     const m=kindMeta[e.kind]||{dot:'var(--text-faint)',verb:'Updated'};
-    const title=esc((e.title||'').slice(0,36));
+    const title=esc(e.title||'');
     let label;
     if(e.kind==='created')   label=`Created <em>${title}</em>`;
     else if(e.kind==='moved') label=`Assigned <em>${title}</em> to ${esc(e.detail||'Unassigned')}`;
