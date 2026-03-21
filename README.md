@@ -1,109 +1,110 @@
-# Song Chest — local songwriting workspace
+# Song Chest
 
-## Folder structure
+**A local-first workspace for songwriters.** Capture audio ideas, write lyrics, organise everything into projects — all stored on your own machine as plain files.
 
-```
-songchest/
-├── server.py         ← Flask backend
-├── index.html        ← frontend (served by Flask)
-├── data.json         ← all your ideas, projects, tags, links
-├── requirements.txt
-├── audio/            ← put your .m4a / .mp3 / .wav files here
-│   └── riffs/        ← subfolders are fine
-└── lyrics/           ← put your .txt / .md / .rtf files here
-    └── drafts/
-```
-
-## Config
-
-Song Chest uses a `config.json` file to know where your audio and lyrics folders live. This file is personal to your machine and is intentionally excluded from git.
-
-To get started, copy the example and edit it:
-
-```bash
-cp config.example.json config.json
-```
-
-Then open `config.json` and point the paths at your actual folders:
-
-```json
-{
-  "audio_folder": "/Users/you/Music/my-songs/audio",
-  "lyrics_folder": "/Users/you/Documents/my-songs/lyrics"
-}
-```
-
-You can also change these paths any time from within the app's settings.
+> Current version: **v0.9.0**
 
 ---
 
-## Setup (one time)
+## Features
 
+### Ideas & Projects
+- Capture **audio ideas** (link to `.m4a`, `.mp3`, `.wav`, `.aiff`, `.ogg`, `.flac`) and **lyric ideas** (`.txt`, `.md`, `.rtf`)
+- Organise ideas into **projects** (EPs, albums, singles) with colour labels
+- **Drag ideas** from the canvas onto a project in the sidebar to assign them instantly
+- **Unassigned** view keeps your inbox clean
+
+### Writing & Playing
+- **Built-in audio player** — play any recording directly in the app; persistent mini-player keeps playing as you browse
+- **Lyric viewer** with Markdown rendering and optional YAML frontmatter hiding
+- **Quick capture** — press `N` anywhere to open a fast capture overlay; idea is saved and appears at the top
+
+### Organisation
+- **Status tracking** — Draft, In Progress, Finished, Archived — with sidebar filtering
+- **Star** important ideas to pin them to the Starred view
+- **Tags** with colour coding and one-click sidebar filtering
+- **Bidirectional linking** — connect related ideas; links are maintained automatically on both ends
+- **Notes** field per idea for context, chords, references
+- **Search** across title, content, notes, and tags simultaneously
+
+### File Management
+- **Auto-sync** — drop files into your audio/lyrics folders and Song Chest finds them
+- **File move** — assign an idea to a project and Song Chest physically moves the file into the right subfolder
+- **Move history** with per-move undo
+
+### Safety & Data
+- **Trash** — deleted ideas go here first; restore or permanently delete on your terms
+- **Activity feed** — every change (create, tag, status, star, assign, delete, restore) is logged with timestamps, visible in Insights
+- **Export / Backup** — download a `.zip` of your data and optionally your audio and lyrics files
+- All data stored in plain `data.json` — human-readable, git-friendly, no database
+
+### Obsidian Integration *(optional)*
+- Connect your Obsidian vault; tagged notes appear alongside your ideas
+- **Auto-link suggestions** — Song Chest spots notes whose title matches your idea and surfaces them
+- Link and unlink Obsidian notes to ideas; linked notes show up in the idea detail view
+- **Sync indicator** with one-click vault refresh
+
+### Appearance
+- **4 themes** — Default (dark gold), Basic (light monochrome), Colorful (vivid neon), Custom (pick your own 5 colours)
+- Custom theme updates live as you drag the colour picker
+- Theme persists across sessions
+
+---
+
+## Setup
+
+**Quick start:**
+```bash
+bash start.sh
+```
+`start.sh` creates a Python virtualenv, installs dependencies, starts the server, and opens your browser automatically.
+
+**Manual:**
 ```bash
 pip install -r requirements.txt
-```
-
-### If an error is thrown:
-
-That just means your system uses pip3 instead of pip. Try:
-```bash
-pip3 install -r requirements.txt
-```
-
-If that also fails, try:
-```bash
-python3 -m pip install -r requirements.txt
-```
-
-OR, python might not work, but python3 does; then try: 
-```bash
-python3 server.py
-```
-
-
-## Run
-
-```bash
 python server.py
+# → http://localhost:5000
 ```
 
-Then open **http://localhost:5000** in your browser.
+**Requirements:** Python 3.9+, Flask (installed automatically via `requirements.txt`)
 
-## Your data
+---
 
-Everything is stored in `data.json` — a plain, human-readable JSON file.
-You can open it in any text editor, inspect it, back it up, or put it under git version control.
+## Configuration
 
-Example entry:
+On first launch, Song Chest creates a `config.json` pointing to `./audio` and `./lyrics` inside the project folder. Change these to your real folders in **Settings** or by editing the file directly:
+
 ```json
 {
-  "id": "a1b2c3d4",
-  "type": "lyric",
-  "title": "Train window watching",
-  "content": "The fields turn gold and grey...",
-  "project": "e5f6g7h8",
-  "tags": ["verse", "melancholy", "travel"],
-  "links": ["x1y2z3w4"],
-  "notes": "Wrote this at Leuven station.",
-  "created": 1718000000000,
-  "updated": 1718003600000
+  "audio_folder": "/Users/you/Music/songs",
+  "lyrics_folder": "/Users/you/Documents/lyrics"
 }
 ```
 
-## Audio files
+`config.json` is personal to your machine and is gitignored — it never gets committed.
 
-Drop any `.m4a`, `.mp3`, `.wav`, `.aiff`, `.ogg`, or `.flac` file into the `audio/` folder.
-Subfolders are supported. Song Chest will scan and list them automatically when you add an audio idea.
+---
 
-## Lyrics files
+## Your data
 
-Drop `.txt`, `.md`, or `.rtf` files into the `lyrics/` folder.
-When editing a lyric idea, you can pick a file from the list and its contents will auto-load into the text field.
+Everything is stored in `data.json` — a plain, human-readable JSON file you can inspect, back up, or put under version control yourself. No database, no cloud, no lock-in.
 
-## Collaboration / sharing later
+---
 
-Because the backend is a clean REST API (`/api/projects`, `/api/ideas`, etc.),
-you can later:
-- Swap `data.json` for SQLite or PostgreSQL with minimal changes to `server.py`
-- Deploy to a small VPS or Railway/Render to share with a co-writer
-- Add login/auth on top of the existing API routes
+## Running tests
+
+```bash
+# Terminal 1 — server must be running
+python server.py
+
+# Terminal 2
+python test_api.py
+```
+
+---
+
+## Roadmap
+
+- **v1.0** — installable macOS app (drag to Applications, no terminal required)
+- **v1.1** — collaboration / shared vault over local network
+- **v1.2** — mobile companion (capture ideas on the go)

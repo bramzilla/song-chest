@@ -8,6 +8,8 @@ import json, os, shutil, uuid, time, re, hashlib, urllib.parse
 from pathlib import Path
 from flask import Flask, jsonify, request, send_from_directory, send_file, abort
 
+APP_VERSION = "0.9.0"
+
 app = Flask(__name__, static_folder=".")
 
 BASE_DIR    = Path(__file__).parent
@@ -300,7 +302,8 @@ def sync_files(data):
 def get_config():
     return jsonify({**CONFIG,
                     "audio_exists":  audio_dir().exists(),
-                    "lyrics_exists": lyrics_dir().exists()})
+                    "lyrics_exists": lyrics_dir().exists(),
+                    "version":       APP_VERSION})
 
 @app.route("/api/config", methods=["POST"])
 def update_config():
