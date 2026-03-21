@@ -260,6 +260,26 @@ header{display:flex;align-items:center;justify-content:space-between;padding:13p
 /* toast */
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(60px);background:var(--bg3);border:1px solid var(--border-strong);color:var(--text);padding:7px 15px;border-radius:6px;font-size:12px;z-index:999;transition:transform .25s;white-space:nowrap}
 .toast.show{transform:translateX(-50%) translateY(0)}
+/* obsidian integration */
+.toggle-wrap{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--text-dim)}
+.toggle-switch{position:relative;display:inline-block;width:34px;height:18px;flex-shrink:0}
+.toggle-switch input{opacity:0;width:0;height:0;position:absolute}
+.toggle-slider{position:absolute;cursor:pointer;inset:0;background:var(--bg4);border-radius:18px;transition:.2s;border:1px solid var(--border-strong)}
+.toggle-slider::before{position:absolute;content:'';height:12px;width:12px;left:2px;bottom:2px;background:var(--text-faint);border-radius:50%;transition:.2s}
+.toggle-switch input:checked+.toggle-slider{background:var(--teal);border-color:var(--teal)}
+.toggle-switch input:checked+.toggle-slider::before{transform:translateX(16px);background:#fff}
+.obs-fields{margin-top:10px;display:flex;flex-direction:column;gap:8px}
+.obs-status{font-size:11px;margin-top:6px;padding:5px 9px;border-radius:4px;background:var(--bg3);border:1px solid var(--border)}
+.obs-status.ok{border-color:rgba(109,184,109,.4);color:var(--green)}
+.obs-status.bad{border-color:rgba(201,40,29,.3);color:var(--crimson)}
+.obs-note-card{background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:9px 11px;margin-bottom:5px}
+.obs-note-card.linked{border-color:rgba(99,182,207,.4)}
+.obs-note-title{font-family:'Fraunces',serif;font-size:13px;margin-bottom:3px}
+.obs-note-preview{font-size:11px;color:var(--text-faint);line-height:1.4;margin-bottom:6px;white-space:pre-wrap}
+.obs-note-footer{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.obs-linked-item{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)}
+.obs-linked-item:last-child{border-bottom:none}
+.obs-linked-title{font-family:'Fraunces',serif;font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:3px}
 @keyframes fi{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 .fi{animation:fi .2s ease forwards}
@@ -345,6 +365,17 @@ header{display:flex;align-items:center;justify-content:space-between;padding:13p
       <div id="vm-proj-row" class="msec"></div>
       <div id="vm-content" class="msec"></div>
       <div id="vm-linked-sec" class="msec" style="display:none"><div class="mseclabel">Linked Ideas</div><div class="linked-grid" id="vm-linked-grid"></div></div>
+      <div id="vm-obsidian-sec" class="msec" style="display:none">
+        <div class="mseclabel" style="display:flex;align-items:center;justify-content:space-between">
+          Obsidian Notes
+          <button class="btn sm" style="font-size:10px;padding:2px 7px" onclick="toggleObsidianPanel()">▾ Browse</button>
+        </div>
+        <div id="vm-obsidian-linked"></div>
+        <div id="vm-obsidian-panel" style="display:none;margin-top:8px">
+          <input class="search-box" id="obs-search" placeholder="Search notes…" oninput="filterObsNotes(this.value)" style="width:100%;margin-bottom:8px;font-size:12px">
+          <div id="obs-notes-list"></div>
+        </div>
+      </div>
       <div class="msec"><div class="mseclabel">Tags</div><div class="modal-tags" id="vm-tags"></div></div>
       <div class="msec"><div class="mseclabel">Notes</div><textarea class="notes-area" id="vm-notes" placeholder="Notes…" onblur="saveNotes()"></textarea></div>
     </div>
@@ -478,6 +509,33 @@ header{display:flex;align-items:center;justify-content:space-between;padding:13p
         <button class="btn sm" id="cleanup-btn" onclick="cleanupTranscoded()">⌫ Clean up transcoded cache</button>
         <div id="cleanup-msg" style="font-size:11px;margin-top:6px"></div>
       </div>
+      <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+        <div class="mseclabel" style="margin-bottom:8px">Integrations</div>
+        <label class="toggle-wrap">
+          <span class="toggle-switch"><input type="checkbox" id="obs-enabled" onchange="obsToggle(this.checked)"><span class="toggle-slider"></span></span>
+          Obsidian
+        </label>
+        <div id="obs-fields" class="obs-fields" style="display:none">
+          <div>
+            <label class="flabel" style="margin-bottom:4px">Vault Path</label>
+            <input class="path-input" id="obs-vault-path" placeholder="/Users/you/Documents/MyVault">
+          </div>
+          <div>
+            <label class="flabel" style="margin-bottom:4px">Vault Name <span style="color:var(--text-faint)">(as shown in Obsidian)</span></label>
+            <input class="path-input" id="obs-vault-name" placeholder="MyVault">
+          </div>
+          <div>
+            <label class="flabel" style="margin-bottom:4px">Filter Tags <span style="color:var(--text-faint)">(comma-separated; empty = all)</span></label>
+            <input class="path-input" id="obs-filter-tags" placeholder="song-idea, lyrics">
+          </div>
+          <div>
+            <label class="flabel" style="margin-bottom:4px">Filter Folders <span style="color:var(--text-faint)">(comma-separated; empty = all)</span></label>
+            <input class="path-input" id="obs-filter-folders" placeholder="Song Ideas, Projects">
+          </div>
+          <div><button class="btn sm teal" onclick="saveObsidianSettings()">Save Obsidian Settings</button></div>
+          <div id="obs-status" class="obs-status" style="display:none"></div>
+        </div>
+      </div>
     </div>
     <div class="mfooter"><button class="btn sm" onclick="closeModal('settings-modal')">Cancel</button><button class="btn sm primary" onclick="savePaths()">Save Paths</button></div>
   </div>
@@ -556,9 +614,10 @@ header{display:flex;align-items:center;justify-content:space-between;padding:13p
 
 <script>
 const COLORS=['#DAA520','#C9281D','#63B6CF','#7CB67C','#B66AB6','#CF8E4E','#5B8DD9','#D9885B','#6EB8A8','#C47070'];
-let db={projects:[],ideas:[],move_history:[]};
+let db={projects:[],ideas:[],move_history:[],obsidian_links:[]};
 let cfg={audio_folder:'',lyrics_folder:'',audio_exists:false,lyrics_exists:false};
 let files={audio:[],lyrics:[]};
+let obsNotes=null; // cached vault scan results
 let ui={view:'grid',pf:'all',tf:'all',tag:null,search:'',sort:'newest',
         viewingId:null,editingId:null,eType:'lyric',eTags:[],eLinks:[],eSelAudio:'',eSelLyric:'',
         pType:'EP',pColor:COLORS[0],audioEl:null,playingId:null,
@@ -846,6 +905,16 @@ function viewIdea(id){
   const ls=document.getElementById('vm-linked-sec'),lg=document.getElementById('vm-linked-grid');
   if((idea.links||[]).length){ls.style.display='';lg.innerHTML=idea.links.map(lid=>{const l=db.ideas.find(i=>i.id===lid);if(!l)return'';return`<div class="linked-mini" onclick="closeModal('view-modal');setTimeout(()=>viewIdea('${l.id}'),80)"><div class="linked-mini-title">${esc(l.title)}</div><div class="linked-mini-type">${l.type==='lyric'?'✍ lyric':'♫ audio'}</div></div>`;}).join('');}
   else ls.style.display='none';
+  // Obsidian linked notes
+  const obsSec=document.getElementById('vm-obsidian-sec');
+  const obsPanel=document.getElementById('vm-obsidian-panel');
+  if(cfg.integrations?.obsidian?.enabled){
+    obsSec.style.display='';
+    obsPanel.style.display='none';
+    renderObsLinked(id);
+  } else {
+    obsSec.style.display='none';
+  }
   document.getElementById('vm-tags').innerHTML=(idea.tags||[]).map(t=>`<span class="tag" style="background:${tCol(t,.15)};color:${tCol(t,1)};padding:3px 9px;border-radius:20px">${esc(t)}</span>`).join('')||'<span style="color:var(--text-faint);font-size:11px">No tags</span>';
   document.getElementById('vm-notes').value=idea.notes||'';
   document.getElementById('vm-move-btn').style.display='';
@@ -1142,6 +1211,16 @@ function openSettings(){
   document.getElementById('s-lyrics-input').value=cfg.lyrics_folder||'';
   document.getElementById('s-msg').textContent='';
   document.getElementById('pref-hide-fm').checked=localStorage.getItem('pref_hide_frontmatter')==='1';
+  // Obsidian settings
+  const obs=cfg.integrations?.obsidian||{};
+  document.getElementById('obs-enabled').checked=!!obs.enabled;
+  document.getElementById('obs-fields').style.display=obs.enabled?'':'none';
+  document.getElementById('obs-vault-path').value=obs.vault_path||'';
+  document.getElementById('obs-vault-name').value=obs.vault_name||'';
+  document.getElementById('obs-filter-tags').value=(obs.filter?.tags||[]).join(', ');
+  document.getElementById('obs-filter-folders').value=(obs.filter?.folders||[]).join(', ');
+  document.getElementById('obs-status').style.display='none';
+  if(obs.enabled) loadObsidianStatus();
   document.getElementById('settings-modal').classList.add('open');
 }
 
@@ -1207,6 +1286,134 @@ async function savePaths(){
     document.getElementById('s-msg').textContent='✓ Paths saved. Click ↻ Sync folders to import your files.';
     document.getElementById('s-msg').style.color='var(--green)';
     toast('Paths saved — now click ↻ Sync folders.');
+  }catch(e){toast('Error: '+e.message);}
+}
+
+// ── obsidian integration ──────────────────────────────────────
+function obsToggle(on){
+  document.getElementById('obs-fields').style.display=on?'':'none';
+  document.getElementById('obs-status').style.display='none';
+  if(on) loadObsidianStatus();
+}
+
+async function loadObsidianStatus(){
+  const el=document.getElementById('obs-status');
+  if(!el) return;
+  el.style.display='';el.className='obs-status';el.textContent='Checking vault…';
+  try{
+    const s=await api('/api/obsidian/status');
+    if(s.enabled&&s.vault_exists){
+      el.className='obs-status ok';el.textContent=`Connected — ${s.note_count} note${s.note_count===1?'':'s'} found`;
+    } else if(s.enabled&&!s.vault_exists){
+      el.className='obs-status bad';el.textContent='Vault not found — check the path';
+    } else {
+      el.style.display='none';
+    }
+  }catch(e){el.className='obs-status bad';el.textContent='Error checking status';}
+}
+
+async function saveObsidianSettings(){
+  const enabled=document.getElementById('obs-enabled').checked;
+  const vault_path=document.getElementById('obs-vault-path').value.trim();
+  const vault_name=document.getElementById('obs-vault-name').value.trim();
+  const rawTags=document.getElementById('obs-filter-tags').value;
+  const rawFolders=document.getElementById('obs-filter-folders').value;
+  const tags=rawTags.split(',').map(t=>t.trim()).filter(Boolean);
+  const folders=rawFolders.split(',').map(f=>f.trim()).filter(Boolean);
+  try{
+    cfg=await api('/api/config','POST',{integrations:{obsidian:{enabled,vault_path,vault_name,filter:{tags,folders}}}});
+    obsNotes=null; // invalidate cache
+    toast('Obsidian settings saved.');
+    loadObsidianStatus();
+  }catch(e){toast('Error: '+e.message);}
+}
+
+async function ensureObsNotes(){
+  if(obsNotes!==null) return obsNotes;
+  try{obsNotes=await api('/api/obsidian/notes');}catch(e){obsNotes=[];}
+  return obsNotes;
+}
+
+async function renderObsLinked(ideaId){
+  const container=document.getElementById('vm-obsidian-linked');
+  const ideaLinks=(db.obsidian_links||[]).filter(l=>l.idea_id===ideaId);
+  if(!ideaLinks.length){
+    container.innerHTML='<div style="font-size:11px;color:var(--text-faint);padding:4px 0">No Obsidian notes linked. Click Browse to add one.</div>';
+    return;
+  }
+  container.innerHTML='<div style="font-size:11px;color:var(--text-faint);padding:4px 0">Loading…</div>';
+  const notes=await ensureObsNotes();
+  if(ui.viewingId!==ideaId) return; // stale
+  const html=ideaLinks.map(lnk=>{
+    const note=notes.find(n=>n.id===lnk.note_id);
+    const title=note?esc(note.title):lnk.note_id;
+    const openBtn=note?`<button class="btn sm" style="font-size:10px;padding:2px 7px" onclick="window.location.href=${JSON.stringify(note.obsidian_uri)}">open ↗</button>`:'';
+    return `<div class="obs-linked-item"><span class="obs-linked-title">${title}</span>${openBtn}<button class="btn sm danger" style="font-size:10px;padding:2px 7px" onclick="unlinkObsNote('${ideaId}','${lnk.note_id}')">× unlink</button></div>`;
+  }).join('');
+  container.innerHTML=html;
+}
+
+async function toggleObsidianPanel(){
+  const panel=document.getElementById('vm-obsidian-panel');
+  if(panel.style.display==='none'){
+    panel.style.display='';
+    document.getElementById('obs-search').value='';
+    const listEl=document.getElementById('obs-notes-list');
+    listEl.innerHTML='<div style="font-size:11px;color:var(--text-faint)">Loading notes…</div>';
+    await ensureObsNotes();
+    renderObsBrowsePanel('');
+  } else {
+    panel.style.display='none';
+  }
+}
+
+function filterObsNotes(q){renderObsBrowsePanel(q);}
+
+function renderObsBrowsePanel(q){
+  const ideaId=ui.viewingId;
+  const listEl=document.getElementById('obs-notes-list');
+  if(!obsNotes){listEl.innerHTML='<div style="font-size:11px;color:var(--text-faint)">No notes loaded.</div>';return;}
+  const linked=new Set((db.obsidian_links||[]).filter(l=>l.idea_id===ideaId).map(l=>l.note_id));
+  const lq=q.toLowerCase();
+  const filtered=obsNotes.filter(n=>!lq||(n.title+' '+(n.tags||[]).join(' ')+' '+n.preview).toLowerCase().includes(lq));
+  if(!filtered.length){listEl.innerHTML='<div style="font-size:11px;color:var(--text-faint)">No matching notes.</div>';return;}
+  listEl.innerHTML=filtered.map(note=>{
+    const isLinked=linked.has(note.id);
+    const tagPills=(note.tags||[]).map(t=>`<span class="tag" style="font-size:10px;padding:2px 7px;border-radius:20px;background:${tCol(t,.15)};color:${tCol(t,1)}">${esc(t)}</span>`).join('');
+    const linkBtn=isLinked
+      ?`<button class="btn sm teal" style="font-size:10px;padding:2px 7px" onclick="unlinkObsNote('${ideaId}','${note.id}')">× unlink</button>`
+      :`<button class="btn sm" style="font-size:10px;padding:2px 7px" onclick="linkObsNote('${ideaId}','${note.id}')">+ link</button>`;
+    return `<div class="obs-note-card${isLinked?' linked':''}">
+      <div class="obs-note-title">${esc(note.title)}</div>
+      ${note.preview?`<div class="obs-note-preview">${esc(note.preview)}</div>`:''}
+      <div class="obs-note-footer">${tagPills}
+        <button class="btn sm" style="font-size:10px;padding:2px 7px;margin-left:auto" onclick="window.location.href=${JSON.stringify(note.obsidian_uri)}">open ↗</button>
+        ${linkBtn}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function linkObsNote(ideaId,noteId){
+  try{
+    await api('/api/obsidian/link','POST',{idea_id:ideaId,note_id:noteId});
+    db.obsidian_links=db.obsidian_links||[];
+    if(!db.obsidian_links.some(l=>l.idea_id===ideaId&&l.note_id===noteId))
+      db.obsidian_links.push({idea_id:ideaId,note_id:noteId});
+    renderObsLinked(ideaId);
+    renderObsBrowsePanel(document.getElementById('obs-search').value);
+    toast('Note linked.');
+  }catch(e){toast('Error: '+e.message);}
+}
+
+async function unlinkObsNote(ideaId,noteId){
+  try{
+    await api('/api/obsidian/link/'+ideaId+'/'+noteId,'DELETE');
+    db.obsidian_links=(db.obsidian_links||[]).filter(l=>!(l.idea_id===ideaId&&l.note_id===noteId));
+    renderObsLinked(ideaId);
+    const panel=document.getElementById('vm-obsidian-panel');
+    if(panel&&panel.style.display!=='none') renderObsBrowsePanel(document.getElementById('obs-search').value);
+    toast('Note unlinked.');
   }catch(e){toast('Error: '+e.message);}
 }
 

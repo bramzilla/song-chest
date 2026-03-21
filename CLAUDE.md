@@ -341,3 +341,70 @@ python server.py &
 python test_api.py
 kill %1
 ```
+
+---
+
+## Obsidian Integration
+
+An optional read-only integration that scans an Obsidian vault for tagged notes and surfaces them as linkable items in the idea detail view.
+
+### Config shape (`config.json`)
+
+```json
+{
+  "integrations": {
+    "obsidian": {
+      "enabled": false,
+      "vault_path": "/absolute/path/to/vault",
+      "vault_name": "MyVault",
+      "filter": {
+        "tags": ["song-idea"],
+        "folders": []
+      },
+      "preview_length": 120
+    }
+  }
+}
+```
+
+- `vault_path` is stored with `os.path.normpath` (not `Path.resolve()`) to avoid the macOS `/var` → `/private/var` symlink issue.
+- If both `filter.tags` and `filter.folders` are empty, all `.md` files in the vault are included.
+- The scanner never modifies vault files — read-only throughout.
+- Scan depth is hardcoded to 3 levels (`_OBSIDIAN_SCAN_DEPTH = 3`), not stored in config.
+
+### `obsidian_links` data structure (`data.json`)
+
+Stored alongside `projects`, `ideas`, and `move_history`:
+
+```json
+{
+  "obsidian_links": [
+    {"idea_id": "a1b2c3d4", "note_id": "e5f6g7h8"}
+  ]
+}
+```
+
+Each entry links one Song Chest idea to one Obsidian note. The `note_id` is stable across scans (see below).
+
+### Stable ID generation
+
+Each vault note gets an 8-character stable ID derived from its path relative to the vault root:
+
+```python
+hashlib.sha1(vault_relative_path.encode()).hexdigest()[:8]
+```
+
+This means the same note always receives the same ID regardless of when the vault is scanned.
+
+### API routes
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/obsidian/notes` | Scan vault and return matching notes |
+| POST | `/api/obsidian/link` | Link an idea to a note `{idea_id, note_id}` |
+| DELETE | `/api/obsidian/link/<idea_id>/<note_id>` | Remove a link |
+| GET | `/api/obsidian/status` | Returns `{enabled, vault_exists, note_count}` |
+
+### macOS symlink note
+
+Always use `os.path.normpath(os.path.expanduser(path))` for `vault_path` — never `Path.resolve()`. macOS exposes `/var` as a symlink to `/private/var`; `resolve()` would rewrite user-provided paths unexpectedly and break path comparisons.
